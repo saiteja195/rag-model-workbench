@@ -28,7 +28,7 @@ services:
     # /app/data: ChromaDB + uploaded documents (wiped on restart)
     # /tmp: temporary files
     tmpfs:
-      - /app/data:size=500M
+      - /app/data:size=500M,uid=1000,gid=1000
       - /tmp:size=100M
 
     # Security hardening
