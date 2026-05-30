@@ -19,8 +19,16 @@ class LLMService:
     def _get_openai_client(self):
         """Lazy-init OpenAI client."""
         if self._client is None:
-            from openai import OpenAI
-            self._client = OpenAI(api_key=settings.openai_api_key)
+            if settings.azure_openai_endpoint:
+                from openai import AzureOpenAI
+                self._client = AzureOpenAI(
+                    api_key=settings.azure_openai_api_key or settings.openai_api_key,
+                    api_version=settings.azure_openai_api_version,
+                    azure_endpoint=settings.azure_openai_endpoint
+                )
+            else:
+                from openai import OpenAI
+                self._client = OpenAI(api_key=settings.openai_api_key)
         return self._client
 
     def _get_gemini_model(self):
@@ -74,7 +82,7 @@ Answer based on the context provided. If the context doesn't contain enough info
             else:
                 answer = self._generate_fallback(context, question)
         except Exception as e:
-            logger.error(f"LLM generation failed ({self.provider}): {e}")
+            logger.error(f"LLM generation failed ({self.provider}): {e}", exc_info=True)
             answer = self._generate_fallback(context, question)
 
         elapsed_ms = (time.time() - start) * 1000
