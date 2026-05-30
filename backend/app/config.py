@@ -40,10 +40,10 @@ class Settings(BaseSettings):
     chunk_size: int = int(os.getenv("CHUNK_SIZE", "500"))
     chunk_overlap: int = int(os.getenv("CHUNK_OVERLAP", "50"))
 
-    # Paths
-    data_dir: Path = Path(__file__).resolve().parent / "data"
-    chroma_dir: Path = Path(__file__).resolve().parent / "data" / "chroma"
-    uploads_dir: Path = Path(__file__).resolve().parent / "data" / "uploads"
+    # Paths — configurable via env vars for Docker deployment
+    data_dir: Path = Path(os.getenv("DATA_DIR", str(Path(__file__).resolve().parent / "data")))
+    chroma_dir: Path = Path(os.getenv("CHROMA_DIR", str(Path(__file__).resolve().parent / "data" / "chroma")))
+    uploads_dir: Path = Path(os.getenv("UPLOADS_DIR", str(Path(__file__).resolve().parent / "data" / "uploads")))
 
     class Config:
         env_file = ".env"

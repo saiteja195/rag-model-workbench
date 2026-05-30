@@ -1,0 +1,108 @@
+# ============================================
+# Docker Compose — RAG Model Workbench
+# Ephemeral storage (no persistent volumes)
+# Designed for Azure Container Apps deployment
+# ============================================
+
+services:
+  # ── Backend: FastAPI + Uvicorn ──────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: rag-workbench-backend
+    restart: unless-stopped
+
+    # Secrets injected at runtime — NEVER baked into image
+    env_file:
+      - ./backend/.env
+
+    # Override paths for Docker container
+    environment:
+      - DATA_DIR=/app/data
+      - CHROMA_DIR=/app/data/chroma
+      - UPLOADS_DIR=/app/data/uploads
+      - CORS_ORIGINS=http://localhost,http://localhost:80,http://frontend
+
+    # Ephemeral storage — user data lives only during container lifetime
+    # /app/data: ChromaDB + uploaded documents (wiped on restart)
+    # /tmp: temporary files
+    tmpfs:
+      - /app/data:size=500M
+      - /tmp:size=100M
+
+    # Security hardening
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: "2.0"
+        reservations:
+          memory: 512M
+          cpus: "0.5"
+
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 40s
+      retries: 3
+
+    networks:
+      - app-network
+
+  # ── Frontend: Nginx serving React SPA ──────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: rag-workbench-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+    # Security hardening
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+
+    # Nginx needs write access to cache/logs/pid
+    tmpfs:
+      - /var/cache/nginx:size=50M
+      - /var/log/nginx:size=10M
+      - /var/run:size=1M
+      - /tmp:size=10M
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.5"
+        reservations:
+          memory: 64M
+          cpus: "0.1"
+
+    # Health check
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:80/"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
