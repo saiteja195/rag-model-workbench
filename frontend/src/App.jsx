@@ -7,6 +7,7 @@ import ChatInterface from './components/ChatInterface';
 import WorkflowDiagram from './components/WorkflowDiagram';
 import MetricsPanel from './components/MetricsPanel';
 import CompareView from './components/CompareView';
+import { IconLayers, IconMessage, IconBarChart, IconFileText, IconNetwork } from './components/Icons';
 
 export default function App() {
   // State
@@ -69,7 +70,9 @@ export default function App() {
       {/* ── Sidebar ─────────────────────────────────────────── */}
       <aside className="sidebar" id="sidebar">
         <div className="brand">
-          <div className="brand-icon">⚗️</div>
+          <div className="brand-icon">
+            <IconNetwork />
+          </div>
           <div className="brand-text">
             <h1>RAG Workbench</h1>
             <p>Model Comparison Lab</p>
@@ -86,7 +89,7 @@ export default function App() {
         {/* Documents List */}
         <div>
           <div className="section-header">
-            <h2>📁 Documents</h2>
+            <h2>DOCUMENTS</h2>
             <div className="line" />
           </div>
           <div className="doc-list" id="doc-list">
@@ -103,7 +106,7 @@ export default function App() {
                   id={`doc-${doc.file_id}`}
                 >
                   <span className="doc-item-icon">
-                    {doc.filename.endsWith('.pdf') ? '📕' : doc.filename.endsWith('.md') ? '📝' : '📄'}
+                    <IconFileText />
                   </span>
                   <div className="doc-item-info">
                     <div className="doc-item-name">{doc.filename}</div>
@@ -143,19 +146,19 @@ export default function App() {
             className={`tab ${activeTab === 'query' ? 'active' : ''}`}
             onClick={() => setActiveTab('query')}
           >
-            💬 Query
+            <IconMessage /> Query
           </button>
           <button
             className={`tab ${activeTab === 'chunks' ? 'active' : ''}`}
             onClick={() => setActiveTab('chunks')}
           >
-            🧩 Chunks
+            <IconLayers /> Chunks
           </button>
           <button
             className={`tab ${activeTab === 'compare' ? 'active' : ''}`}
             onClick={() => setActiveTab('compare')}
           >
-            🏆 Compare
+            <IconBarChart /> Compare
           </button>
         </div>
 
