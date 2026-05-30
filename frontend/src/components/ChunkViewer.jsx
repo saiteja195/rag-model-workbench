@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getDocumentChunks } from '../api/client';
+import { IconLayers, IconFileText } from './Icons';
 
 export default function ChunkViewer({ fileId, highlightedChunks = [] }) {
   const [chunks, setChunks] = useState([]);
@@ -46,7 +47,9 @@ export default function ChunkViewer({ fileId, highlightedChunks = [] }) {
     return (
       <div className="glass-card">
         <div className="empty-state">
-          <span className="empty-state-icon">📄</span>
+          <span className="empty-state-icon">
+            <IconFileText />
+          </span>
           <h3>No Document Selected</h3>
           <p>Upload a document to see its chunks here</p>
         </div>
@@ -57,7 +60,8 @@ export default function ChunkViewer({ fileId, highlightedChunks = [] }) {
   return (
     <div className="glass-card">
       <div className="section-header">
-        <h2>🧩 Document Chunks ({chunks.length})</h2>
+        <IconLayers />
+        <h2>DOCUMENT CHUNKS ({chunks.length})</h2>
         <div className="line" />
       </div>
 

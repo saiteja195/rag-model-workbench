@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { runQuery } from '../api/client';
+import { IconMessage, IconArrowUp } from './Icons';
 
 export default function ChatInterface({ fileId, ragType, onQueryResult }) {
   const [messages, setMessages] = useState([]);
@@ -66,7 +67,9 @@ export default function ChatInterface({ fileId, ragType, onQueryResult }) {
         <div className="chat-messages">
           {messages.length === 0 && (
             <div className="empty-state">
-              <span className="empty-state-icon">💬</span>
+              <span className="empty-state-icon">
+                <IconMessage />
+              </span>
               <h3>Ask a Question</h3>
               <p>
                 {!fileId
@@ -121,7 +124,7 @@ export default function ChatInterface({ fileId, ragType, onQueryResult }) {
               title="Send message"
               id="chat-send"
             >
-              ↑
+              <IconArrowUp />
             </button>
           </div>
         </div>

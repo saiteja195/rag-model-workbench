@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { compareRAGTypes } from '../api/client';
+import { IconBarChart, IconZap, IconTarget, IconNetwork, IconBot, IconLoader } from './Icons';
 
 const RAG_META = {
-  traditional: { icon: '🎯', color: '#6366f1' },
-  hybrid:      { icon: '⚡', color: '#f59e0b' },
-  graph:       { icon: '🕸️', color: '#10b981' },
-  agentic:     { icon: '🤖', color: '#ec4899' },
+  traditional: { icon: <IconTarget />, color: '#6366f1' },
+  hybrid:      { icon: <IconZap />, color: '#f59e0b' },
+  graph:       { icon: <IconNetwork />, color: '#10b981' },
+  agentic:     { icon: <IconBot />, color: '#ec4899' },
 };
 
 export default function CompareView({ fileId }) {
@@ -41,7 +42,8 @@ export default function CompareView({ fileId }) {
   return (
     <div className="glass-card">
       <div className="section-header">
-        <h2>🏆 Compare All RAG Types</h2>
+        <IconBarChart />
+        <h2>COMPARE RAG TYPES</h2>
         <div className="line" />
       </div>
 
@@ -65,8 +67,9 @@ export default function CompareView({ fileId }) {
           onClick={handleCompare}
           disabled={!question.trim() || !fileId || isLoading}
           id="compare-btn"
+          style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
         >
-          {isLoading ? <span className="loading-spinner" /> : '⚔️ Compare'}
+          {isLoading ? <IconLoader /> : 'Compare'}
         </button>
       </div>
 

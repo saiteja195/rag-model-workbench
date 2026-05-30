@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { uploadDocument } from '../api/client';
+import { IconUpload, IconLoader, IconFileText } from './Icons';
 
 export default function FileUpload({ onUploaded }) {
   const [isDragOver, setIsDragOver] = useState(false);
@@ -65,7 +66,8 @@ export default function FileUpload({ onUploaded }) {
   return (
     <div className="glass-card">
       <div className="section-header">
-        <h2>📄 Upload Document</h2>
+        <IconFileText />
+        <h2>UPLOAD DOCUMENT</h2>
         <div className="line" />
       </div>
 
@@ -89,7 +91,9 @@ export default function FileUpload({ onUploaded }) {
 
         {isUploading ? (
           <>
-            <span className="upload-zone-icon loading-pulse">⚙️</span>
+            <span className="upload-zone-icon">
+              <IconLoader />
+            </span>
             <h3>Processing document...</h3>
             <p>Parsing, chunking, and embedding your file</p>
             <div className="upload-progress">
@@ -100,7 +104,9 @@ export default function FileUpload({ onUploaded }) {
           </>
         ) : (
           <>
-            <span className="upload-zone-icon">📁</span>
+            <span className="upload-zone-icon">
+              <IconUpload />
+            </span>
             <h3>Drop your document here</h3>
             <p>
               or <span className="highlight">click to browse</span>

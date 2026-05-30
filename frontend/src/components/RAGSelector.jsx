@@ -1,3 +1,5 @@
+import { IconTarget, IconZap, IconNetwork, IconBot, IconSettings } from './Icons';
+
 const RAG_COLORS = {
   traditional: { accent: '#6366f1', glow: 'rgba(99, 102, 241, 0.3)' },
   hybrid:      { accent: '#f59e0b', glow: 'rgba(245, 158, 11, 0.3)' },
@@ -5,12 +7,20 @@ const RAG_COLORS = {
   agentic:     { accent: '#ec4899', glow: 'rgba(236, 72, 153, 0.3)' },
 };
 
+const RAG_ICONS = {
+  traditional: <IconTarget />,
+  hybrid: <IconZap />,
+  graph: <IconNetwork />,
+  agentic: <IconBot />,
+};
+
 export default function RAGSelector({ ragTypes, selectedType, onSelect }) {
   if (!ragTypes || ragTypes.length === 0) {
     return (
       <div>
         <div className="section-header">
-          <h2>⚡ RAG Type</h2>
+          <IconSettings />
+          <h2>RAG TYPE</h2>
           <div className="line" />
         </div>
         <div className="empty-state" style={{ padding: '24px' }}>
@@ -25,12 +35,14 @@ export default function RAGSelector({ ragTypes, selectedType, onSelect }) {
   return (
     <div>
       <div className="section-header">
-        <h2>⚡ RAG Type</h2>
+        <IconSettings />
+        <h2>RAG TYPE</h2>
         <div className="line" />
       </div>
       <div className="rag-selector" id="rag-selector">
         {ragTypes.map((rag) => {
           const colors = RAG_COLORS[rag.id] || RAG_COLORS.traditional;
+          const icon = RAG_ICONS[rag.id] || <IconTarget />;
           return (
             <div
               key={rag.id}
@@ -43,7 +55,7 @@ export default function RAGSelector({ ragTypes, selectedType, onSelect }) {
               id={`rag-card-${rag.id}`}
             >
               <div className="rag-card-header">
-                <div className="rag-card-icon">{rag.icon}</div>
+                <div className="rag-card-icon">{icon}</div>
                 <span className="rag-card-name">{rag.name}</span>
               </div>
               <p className="rag-card-desc">

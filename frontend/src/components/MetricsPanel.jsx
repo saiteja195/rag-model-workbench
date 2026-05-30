@@ -1,3 +1,5 @@
+import { IconBarChart } from './Icons';
+
 export default function MetricsPanel({ queryResult }) {
   if (!queryResult) {
     return null;
@@ -45,7 +47,8 @@ export default function MetricsPanel({ queryResult }) {
   return (
     <div className="glass-card">
       <div className="section-header">
-        <h2>📊 Performance Metrics</h2>
+        <IconBarChart />
+        <h2>PERFORMANCE METRICS</h2>
         <div className="line" />
       </div>
       <div className="metrics-grid" id="metrics-grid">
