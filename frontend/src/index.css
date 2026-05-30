@@ -850,29 +850,44 @@ h3 { font-size: 1.15rem; }
   border-radius: var(--radius-lg);
 }
 
-.workflow-steps {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  position: relative;
+.workflow-flowchart-container {
+  overflow-x: auto;
+  padding: var(--space-lg) 0;
+  margin: 0 calc(var(--space-md) * -1);
+  padding-left: var(--space-md);
+  padding-right: var(--space-md);
 }
 
-.workflow-step {
+.workflow-flowchart-container::-webkit-scrollbar {
+  height: 6px;
+}
+.workflow-flowchart-container::-webkit-scrollbar-thumb {
+  background: var(--glass-border);
+  border-radius: var(--radius-full);
+}
+
+.workflow-flowchart {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 0;
+  min-width: max-content;
+}
+
+.flowchart-node-wrapper {
   display: flex;
-  gap: var(--space-md);
-  padding: var(--space-md) 0;
-  position: relative;
+  align-items: stretch;
   animation: stepReveal 0.4s ease both;
 }
 
-.workflow-step:nth-child(1) { animation-delay: 0.05s; }
-.workflow-step:nth-child(2) { animation-delay: 0.15s; }
-.workflow-step:nth-child(3) { animation-delay: 0.25s; }
-.workflow-step:nth-child(4) { animation-delay: 0.35s; }
-.workflow-step:nth-child(5) { animation-delay: 0.45s; }
-.workflow-step:nth-child(6) { animation-delay: 0.55s; }
-.workflow-step:nth-child(7) { animation-delay: 0.65s; }
-.workflow-step:nth-child(8) { animation-delay: 0.75s; }
+.flowchart-node-wrapper:nth-child(1) { animation-delay: 0.05s; }
+.flowchart-node-wrapper:nth-child(2) { animation-delay: 0.15s; }
+.flowchart-node-wrapper:nth-child(3) { animation-delay: 0.25s; }
+.flowchart-node-wrapper:nth-child(4) { animation-delay: 0.35s; }
+.flowchart-node-wrapper:nth-child(5) { animation-delay: 0.45s; }
+.flowchart-node-wrapper:nth-child(6) { animation-delay: 0.55s; }
+.flowchart-node-wrapper:nth-child(7) { animation-delay: 0.65s; }
+.flowchart-node-wrapper:nth-child(8) { animation-delay: 0.75s; }
 
 @keyframes stepReveal {
   from {
@@ -885,75 +900,119 @@ h3 { font-size: 1.15rem; }
   }
 }
 
-.step-indicator {
+.flowchart-node {
+  background: var(--bg-card);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  width: 280px;
+  position: relative;
+  transition: all var(--transition-base);
+  z-index: 2;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  flex-shrink: 0;
-  width: 36px;
-}
-
-.step-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: var(--accent-indigo);
-  border: 2px solid var(--bg-primary);
-  box-shadow: 0 0 8px var(--accent-indigo-glow);
-  flex-shrink: 0;
-  z-index: 1;
-}
-
-.step-dot.completed {
-  background: var(--accent-emerald);
-  box-shadow: 0 0 8px var(--accent-emerald-glow);
-}
-
-.step-line {
-  width: 2px;
   flex: 1;
-  background: var(--glass-border);
-  margin: 4px 0;
 }
 
-.workflow-step:last-child .step-line {
-  display: none;
+.flowchart-node.completed {
+  border-color: rgba(16, 185, 129, 0.3);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.05);
 }
 
-.step-content {
-  flex: 1;
-  min-width: 0;
+.flowchart-node:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent-indigo);
+  box-shadow: 0 8px 24px var(--accent-indigo-glow);
 }
 
-.step-name {
+.node-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--space-xs);
+}
+
+.node-name {
   font-weight: 600;
   font-size: 0.9rem;
   color: var(--text-primary);
-  margin-bottom: 2px;
+  line-height: 1.3;
 }
 
-.step-description {
-  font-size: 0.78rem;
+.node-duration {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--accent-cyan);
+  background: rgba(6, 182, 212, 0.08);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.node-desc {
+  font-size: 0.75rem;
   color: var(--text-secondary);
   line-height: 1.5;
+  margin-bottom: var(--space-sm);
+  flex: 1;
 }
 
-.step-duration {
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-  color: var(--accent-cyan);
-  margin-top: 4px;
-  display: inline-block;
-  background: rgba(6, 182, 212, 0.08);
-  padding: 1px 8px;
-  border-radius: var(--radius-sm);
-}
-
-.step-io {
-  margin-top: var(--space-xs);
+.node-io {
+  margin-top: auto;
+  padding-top: var(--space-sm);
+  border-top: 1px dashed var(--glass-border);
   font-size: 0.7rem;
   color: var(--text-muted);
   font-family: var(--font-mono);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.io-line {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.io-label {
+  color: var(--text-tertiary);
+  margin-right: 4px;
+}
+
+.flowchart-edge {
+  display: flex;
+  align-items: center;
+  align-self: center;
+  width: 40px;
+  height: 2px;
+  background: var(--glass-border);
+  position: relative;
+  z-index: 1;
+  transition: all var(--transition-base);
+}
+
+.flowchart-edge::after {
+  content: '';
+  position: absolute;
+  right: -2px;
+  top: 50%;
+  transform: translateY(-50%);
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+  border-left: 6px solid var(--glass-border);
+  transition: all var(--transition-base);
+}
+
+.flowchart-edge.completed {
+  background: var(--accent-emerald);
+}
+
+.flowchart-edge.completed::after {
+  border-left-color: var(--accent-emerald);
 }
 
 /* ── Metrics Panel ─────────────────────────────────────────────── */
