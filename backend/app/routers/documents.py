@@ -1,5 +1,7 @@
 """Document management endpoints — upload, list, view chunks, delete."""
 
+from __future__ import annotations
+
 import shutil
 import logging
 from pathlib import Path

@@ -1,5 +1,7 @@
 """Base class for all RAG pipeline implementations."""
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from app.models.schemas import QueryResponse, WorkflowStep
 

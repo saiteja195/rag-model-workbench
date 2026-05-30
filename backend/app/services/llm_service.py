@@ -1,5 +1,7 @@
 """LLM service abstraction — supports OpenAI, Gemini, and Ollama."""
 
+from __future__ import annotations
+
 import logging
 import time
 from app.config import settings

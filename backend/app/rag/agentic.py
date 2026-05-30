@@ -1,5 +1,7 @@
 """Agentic RAG — LLM-driven agent that plans, retrieves, evaluates, and retries."""
 
+from __future__ import annotations
+
 import time
 import logging
 

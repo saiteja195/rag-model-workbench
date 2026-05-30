@@ -1,5 +1,7 @@
 """Hybrid RAG — combines vector search with BM25 keyword search via Reciprocal Rank Fusion."""
 
+from __future__ import annotations
+
 import time
 import logging
 import numpy as np

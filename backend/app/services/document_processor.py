@@ -1,5 +1,7 @@
 """Document processing service — parsing, chunking, embedding, and storage."""
 
+from __future__ import annotations
+
 import time
 import uuid
 import logging

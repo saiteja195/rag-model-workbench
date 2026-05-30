@@ -1,5 +1,7 @@
 """Embedding service using sentence-transformers (runs locally, no API key)."""
 
+from __future__ import annotations
+
 import time
 import logging
 from sentence_transformers import SentenceTransformer

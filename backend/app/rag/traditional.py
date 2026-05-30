@@ -1,5 +1,7 @@
 """Traditional RAG — pure vector similarity search."""
 
+from __future__ import annotations
+
 import time
 import logging
 

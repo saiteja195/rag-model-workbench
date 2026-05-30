@@ -1,5 +1,7 @@
 """Query endpoints — run RAG pipelines and compare results."""
 
+from __future__ import annotations
+
 import asyncio
 import logging
 from fastapi import APIRouter, HTTPException
