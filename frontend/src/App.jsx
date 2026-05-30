@@ -7,16 +7,34 @@ import ChatInterface from './components/ChatInterface';
 import WorkflowDiagram from './components/WorkflowDiagram';
 import MetricsPanel from './components/MetricsPanel';
 import CompareView from './components/CompareView';
-import { IconLayers, IconMessage, IconBarChart, IconFileText, IconNetwork } from './components/Icons';
+import { IconLayers, IconMessage, IconBarChart, IconFileText, IconNetwork, IconSun, IconMoon } from './components/Icons';
 
 export default function App() {
   // State
+  const [theme, setTheme] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('theme');
+      if (saved) return saved;
+      if (window.matchMedia('(prefers-color-scheme: light)').matches) return 'light';
+    }
+    return 'dark';
+  });
   const [ragTypes, setRagTypes] = useState([]);
   const [selectedRagType, setSelectedRagType] = useState('traditional');
   const [documents, setDocuments] = useState([]);
   const [activeFileId, setActiveFileId] = useState(null);
   const [activeTab, setActiveTab] = useState('query');  // query, chunks, compare
   const [lastQueryResult, setLastQueryResult] = useState(null);
+
+  // Apply theme to document
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+  };
 
   // Load RAG types on mount
   useEffect(() => {
@@ -69,14 +87,23 @@ export default function App() {
     <div className="app-layout" id="app-layout">
       {/* ── Sidebar ─────────────────────────────────────────── */}
       <aside className="sidebar" id="sidebar">
-        <div className="brand">
-          <div className="brand-icon">
-            <IconNetwork />
+        <div className="brand" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div className="brand-icon">
+              <IconNetwork />
+            </div>
+            <div className="brand-text">
+              <h1>RAG Workbench</h1>
+              <p>Model Comparison Lab</p>
+            </div>
           </div>
-          <div className="brand-text">
-            <h1>RAG Workbench</h1>
-            <p>Model Comparison Lab</p>
-          </div>
+          <button 
+            onClick={toggleTheme} 
+            className="theme-toggle"
+            title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+          >
+            {theme === 'dark' ? <IconSun /> : <IconMoon />}
+          </button>
         </div>
 
         {/* RAG Type Selector */}
