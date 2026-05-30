@@ -166,7 +166,9 @@ class HybridRAG(BaseRAG):
         prompt = (
             "You are a helpful assistant. Answer the question using ONLY the "
             "context provided below. This context was retrieved using a hybrid "
-            "approach combining semantic and keyword search. Be concise and accurate."
+            "approach combining semantic and keyword search. Be concise, but "
+            "ALWAYS formulate your answer as a complete, grammatically correct "
+            "sentence (do not just copy-paste sentence fragments from the context)."
         )
         answer, gen_time = llm_service.generate(prompt, context, question)
         workflow_steps.append(self._make_step(
