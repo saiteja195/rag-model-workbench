@@ -117,10 +117,10 @@ class HydeRAG(BaseRAG):
             answer=answer,
             retrieved_chunks=retrieved_chunks,
             workflow_steps=workflow_steps,
-            metrics={
-                "total_time_ms": total_time,
-                "retrieval_time_ms": retrieval_time + hyde_time, # Retrival in HyDE includes the generation
-                "generation_time_ms": gen_time,
-            },
+            total_time_ms=total_time,
+            retrieval_time_ms=retrieval_time + hyde_time, # Retrieval in HyDE includes the generation
+            generation_time_ms=gen_time,
+            embedding_time_ms=embed_time,
+            chunks_searched=len(retrieved_chunks),
             rag_type=self.rag_type
         )
