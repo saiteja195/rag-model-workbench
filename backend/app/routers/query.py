@@ -15,6 +15,8 @@ from app.rag.traditional import TraditionalRAG
 from app.rag.hybrid import HybridRAG
 from app.rag.graph import GraphRAG
 from app.rag.agentic import AgenticRAG
+from app.rag.naive import NaiveRAG
+from app.rag.hyde import HydeRAG
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/query", tags=["Query"])
@@ -25,6 +27,8 @@ RAG_ENGINES = {
     "hybrid": HybridRAG(),
     "graph": GraphRAG(),
     "agentic": AgenticRAG(),
+    "naive": NaiveRAG(),
+    "hyde": HydeRAG(),
 }
 
 

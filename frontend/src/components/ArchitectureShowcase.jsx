@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { IconBook, IconPlay, IconX, IconChevronDown, IconChevronRight, IconCheckCircle, IconAlertCircle, IconGitBranch, IconSearch, IconExternalLink } from './Icons';
+import { getIconComponent } from './IconMap';
 
 // Map RAG type IDs to their runnable engine labels
 const RUNNABLE_ENGINES = ['traditional', 'hybrid', 'graph', 'agentic'];
@@ -69,7 +70,7 @@ function ArchCard({ rag, isSelected, onClick }) {
       id={`arch-card-${rag.id}`}
     >
       <div className="arch-card-top">
-        <span className="arch-card-icon">{rag.icon}</span>
+        <span className="arch-card-icon">{getIconComponent(rag.icon)}</span>
         <CategoryBadge category={rag.category} />
       </div>
       <h3 className="arch-card-name">{rag.name}</h3>
@@ -103,7 +104,7 @@ function ArchDetailPanel({ rag, onClose, onTryIt }) {
         {/* Header */}
         <div className="arch-detail-header" style={{ '--panel-color': rag.color }}>
           <div className="arch-detail-header-left">
-            <span className="arch-detail-icon">{rag.icon}</span>
+            <span className="arch-detail-icon">{getIconComponent(rag.icon)}</span>
             <div>
               <h2 className="arch-detail-name">{rag.name}</h2>
               <CategoryBadge category={rag.category} />
@@ -254,7 +255,7 @@ function ComparisonTable({ ragTypes }) {
               return (
                 <tr key={rag.id} className={`comparison-row ${rag.category === 'runnable' ? 'runnable-row' : ''}`}>
                   <td className="comparison-td-name">
-                    <span className="comparison-icon">{rag.icon}</span>
+                    <span className="comparison-icon">{getIconComponent(rag.icon)}</span>
                     <span className="comparison-name">{rag.name}</span>
                     {rag.category === 'runnable' && (
                       <span className="comparison-runnable-dot" title="Runnable engine" />

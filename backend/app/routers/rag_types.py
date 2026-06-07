@@ -17,7 +17,7 @@ RAG_TYPE_CATALOG: list[RAGTypeInfo] = [
             "finds the most semantically similar chunks using cosine similarity. "
             "Fast and simple, but can miss exact keywords or cross-document connections."
         ),
-        icon="🎯",
+        icon="target",
         color="#6366f1",
         category="runnable",
         engine_id="traditional",
@@ -57,7 +57,7 @@ RAG_TYPE_CATALOG: list[RAGTypeInfo] = [
             "semantically similar AND keyword-matching content that pure vector "
             "search might miss. The production standard for 2024+."
         ),
-        icon="⚡",
+        icon="zap",
         color="#f59e0b",
         category="runnable",
         engine_id="hybrid",
@@ -104,7 +104,7 @@ RAG_TYPE_CATALOG: list[RAGTypeInfo] = [
             "across chunks, enabling multi-hop reasoning. Community summaries "
             "enable global thematic queries — a capability vector search cannot match."
         ),
-        icon="🕸️",
+        icon="network",
         color="#10b981",
         category="runnable",
         engine_id="graph",
@@ -153,7 +153,7 @@ RAG_TYPE_CATALOG: list[RAGTypeInfo] = [
             "can refine its approach if initial results are insufficient. Shows "
             "visible reasoning trace with self-correction and web search fallback."
         ),
-        icon="🤖",
+        icon="bot",
         color="#ec4899",
         category="runnable",
         engine_id="agentic",
@@ -210,9 +210,9 @@ RAG_TYPE_CATALOG: list[RAGTypeInfo] = [
             "and a simple stuff-into-prompt generation step. The foundation "
             "all modern RAG builds upon."
         ),
-        icon="📄",
+        icon="file-text",
         color="#8b5cf6",
-        category="showcase",
+        category="runnable",
         engine_id="traditional",
         origin="Meta AI Research — Lewis et al., 2020 (arxiv:2005.11401)",
         used_by="Every early LLM product (2021-2023). Still the default in tutorials.",
@@ -258,7 +258,7 @@ RAG_TYPE_CATALOG: list[RAGTypeInfo] = [
             "deduplication) around the naive pipeline. The current production standard "
             "for enterprise Q&A systems."
         ),
-        icon="🚀",
+        icon="rocket",
         color="#0ea5e9",
         category="showcase",
         engine_id="hybrid",
@@ -306,7 +306,7 @@ RAG_TYPE_CATALOG: list[RAGTypeInfo] = [
             "without re-indexing, A/B test re-rankers independently. Central orchestration "
             "coordinates all data flow."
         ),
-        icon="🧩",
+        icon="layers",
         color="#14b8a6",
         category="showcase",
         engine_id=None,
@@ -350,7 +350,7 @@ RAG_TYPE_CATALOG: list[RAGTypeInfo] = [
             "then dynamically generates summaries only for relevant communities at "
             "query time — budget-aware lazy evaluation."
         ),
-        icon="💤",
+        icon="moon",
         color="#22d3ee",
         category="showcase",
         engine_id="graph",
@@ -395,7 +395,7 @@ RAG_TYPE_CATALOG: list[RAGTypeInfo] = [
             "handles concept/topic queries (how, why, thematic). Hybrid mode merges both "
             "for comprehensive answers."
         ),
-        icon="💡",
+        icon="zap",
         color="#a78bfa",
         category="showcase",
         engine_id="graph",
@@ -443,7 +443,7 @@ RAG_TYPE_CATALOG: list[RAGTypeInfo] = [
             "mixed results trigger knowledge refinement — decomposing docs into sentence-level "
             "strips and filtering by relevance before generation."
         ),
-        icon="✅",
+        icon="check-circle",
         color="#f43f5e",
         category="showcase",
         engine_id="agentic",
@@ -494,7 +494,7 @@ RAG_TYPE_CATALOG: list[RAGTypeInfo] = [
             "[ISSUP] verifies claim support; [ISUSE] scores final usefulness. "
             "Adaptive retrieval — skips retrieval for simple factual queries."
         ),
-        icon="🪞",
+        icon="mirror",
         color="#fb923c",
         category="showcase",
         engine_id=None,
@@ -547,9 +547,9 @@ RAG_TYPE_CATALOG: list[RAGTypeInfo] = [
             "and used for retrieval. Bridges the embedding space gap between short queries "
             "and long document passages."
         ),
-        icon="🔮",
+        icon="eye",
         color="#d946ef",
-        category="showcase",
+        category="runnable",
         engine_id="hybrid",
         origin="Gao et al., 'Precise Zero-Shot Dense Retrieval without Relevance Labels', Stanford, 2022 (arxiv:2212.10496)",
         used_by="LangChain (HypotheticalDocumentEmbedder), LlamaIndex; widely used in production advanced RAG pipelines",
@@ -594,7 +594,7 @@ RAG_TYPE_CATALOG: list[RAGTypeInfo] = [
             "FLARE retrieves DURING generation when the model becomes uncertain about upcoming "
             "tokens. Uses the predicted upcoming sentence as the retrieval query."
         ),
-        icon="🔦",
+        icon="sun",
         color="#84cc16",
         category="showcase",
         engine_id=None,
@@ -648,7 +648,7 @@ RAG_TYPE_CATALOG: list[RAGTypeInfo] = [
             "Captures relevant content that different phrasings surface — robust to "
             "imprecise user queries."
         ),
-        icon="🔀",
+        icon="git-branch",
         color="#06b6d4",
         category="showcase",
         engine_id="hybrid",
@@ -701,7 +701,7 @@ RAG_TYPE_CATALOG: list[RAGTypeInfo] = [
             "no text extraction required. Retrieves the right page even when "
             "the answer is in a chart or diagram."
         ),
-        icon="🖼️",
+        icon="image",
         color="#f97316",
         category="showcase",
         engine_id=None,
@@ -755,7 +755,7 @@ RAG_TYPE_CATALOG: list[RAGTypeInfo] = [
             "Table for analytical/comparative queries, Chunk for simple lookups, "
             "Algorithm for procedural queries, Summary for thematic queries."
         ),
-        icon="🏗️",
+        icon="layers",
         color="#f59e0b",
         category="showcase",
         engine_id=None,

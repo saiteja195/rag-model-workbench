@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { IconSettings, IconTarget, IconZap, IconNetwork, IconBot, IconBook, IconPlay, IconChevronDown, IconChevronRight, IconSearch } from './Icons';
+import { IconSettings, IconPlay, IconBook, IconChevronDown, IconChevronRight, IconSearch } from './Icons';
+import { getIconComponent } from './IconMap';
 
 const RAG_COLORS = {
   traditional:  { accent: '#6366f1', glow: 'rgba(99, 102, 241, 0.3)' },
@@ -20,16 +21,9 @@ const RAG_COLORS = {
   structrag:    { accent: '#f59e0b', glow: 'rgba(245, 158, 11, 0.3)' },
 };
 
-const RAG_ICONS = {
-  traditional:  <IconTarget />,
-  hybrid:       <IconZap />,
-  graph:        <IconNetwork />,
-  agentic:      <IconBot />,
-};
-
 function RAGCard({ rag, isSelected, onSelect }) {
   const colors = RAG_COLORS[rag.id] || RAG_COLORS.traditional;
-  const icon = RAG_ICONS[rag.id] || null;
+  const iconComponent = getIconComponent(rag.icon);
   const isRunnable = rag.category === 'runnable';
 
   return (
@@ -44,11 +38,13 @@ function RAGCard({ rag, isSelected, onSelect }) {
     >
       <div className="rag-card-header">
         <div className="rag-card-icon">
-          {icon || <span style={{ fontSize: '0.9rem' }}>{rag.icon}</span>}
+          {iconComponent}
         </div>
         <span className="rag-card-name">{rag.name}</span>
         {!isRunnable && (
-          <span className="rag-card-showcase-badge" title="Showcase only">📖</span>
+          <span className="rag-card-showcase-badge" title="Showcase only">
+            {getIconComponent('book')}
+          </span>
         )}
       </div>
       <p className="rag-card-desc">{rag.best_for}</p>
