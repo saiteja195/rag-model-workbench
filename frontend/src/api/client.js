@@ -85,6 +85,10 @@ export async function getRAGTypes() {
   return request('/rag-types');
 }
 
+export async function getRAGTypeDetail(ragId) {
+  return request(`/rag-types/${ragId}`);
+}
+
 // ── Health ────────────────────────────────────────────────────────
 
 export async function healthCheck() {

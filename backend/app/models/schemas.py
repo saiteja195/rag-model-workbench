@@ -121,3 +121,11 @@ class RAGTypeInfo(BaseModel):
     workflow_steps: list[str]
     strengths: list[str]
     best_for: str
+    # Showcase fields (new)
+    category: str = "runnable"          # "runnable" | "showcase"
+    engine_id: Optional[str] = None     # maps showcase types to a runnable engine id
+    origin: str = ""
+    used_by: str = ""
+    pipeline_diagram: str = ""
+    weaknesses: list[str] = Field(default_factory=list)
+    key_insight: str = ""

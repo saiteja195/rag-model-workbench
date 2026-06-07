@@ -7,10 +7,13 @@ import ChatInterface from './components/ChatInterface';
 import WorkflowDiagram from './components/WorkflowDiagram';
 import MetricsPanel from './components/MetricsPanel';
 import CompareView from './components/CompareView';
-import { IconLayers, IconMessage, IconBarChart, IconFileText, IconNetwork, IconSun, IconMoon } from './components/Icons';
+import ArchitectureShowcase from './components/ArchitectureShowcase';
+import {
+  IconLayers, IconMessage, IconBarChart, IconFileText,
+  IconNetwork, IconSun, IconMoon, IconBook,
+} from './components/Icons';
 
 export default function App() {
-  // State
   const [theme, setTheme] = useState(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('theme');
@@ -23,30 +26,26 @@ export default function App() {
   const [selectedRagType, setSelectedRagType] = useState('traditional');
   const [documents, setDocuments] = useState([]);
   const [activeFileId, setActiveFileId] = useState(null);
-  const [activeTab, setActiveTab] = useState('query');  // query, chunks, compare
+  const [activeTab, setActiveTab] = useState('query'); // query, chunks, compare, architectures
   const [lastQueryResult, setLastQueryResult] = useState(null);
+  const [showcaseFocusId, setShowcaseFocusId] = useState(null);
 
-  // Apply theme to document
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('theme', theme);
   }, [theme]);
 
-  const toggleTheme = () => {
-    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
-  };
+  const toggleTheme = () => setTheme(prev => prev === 'dark' ? 'light' : 'dark');
 
-  // Load RAG types on mount
   useEffect(() => {
     getRAGTypes()
       .then(setRagTypes)
       .catch(() => {
-        // Fallback RAG types if backend isn't running yet
         setRagTypes([
-          { id: 'traditional', name: 'Traditional RAG', icon: '🎯', color: '#6366f1', best_for: 'Simple, direct questions', workflow_steps: [], strengths: [] },
-          { id: 'hybrid', name: 'Hybrid RAG', icon: '⚡', color: '#f59e0b', best_for: 'Questions with specific terms', workflow_steps: [], strengths: [] },
-          { id: 'graph', name: 'Graph RAG', icon: '🕸️', color: '#10b981', best_for: 'Relationship-based questions', workflow_steps: [], strengths: [] },
-          { id: 'agentic', name: 'Agentic RAG', icon: '🤖', color: '#ec4899', best_for: 'Complex, multi-faceted questions', workflow_steps: [], strengths: [] },
+          { id: 'traditional', name: 'Traditional RAG', icon: '🎯', color: '#6366f1', category: 'runnable', best_for: 'Simple, direct questions', workflow_steps: [], strengths: [], weaknesses: [] },
+          { id: 'hybrid',      name: 'Hybrid RAG',      icon: '⚡', color: '#f59e0b', category: 'runnable', best_for: 'Questions with specific terms', workflow_steps: [], strengths: [], weaknesses: [] },
+          { id: 'graph',       name: 'GraphRAG',         icon: '🕸️', color: '#10b981', category: 'runnable', best_for: 'Relationship-based questions', workflow_steps: [], strengths: [], weaknesses: [] },
+          { id: 'agentic',     name: 'Agentic RAG',      icon: '🤖', color: '#ec4899', category: 'runnable', best_for: 'Complex, multi-faceted questions', workflow_steps: [], strengths: [], weaknesses: [] },
         ]);
       });
 
@@ -55,7 +54,6 @@ export default function App() {
 
   const handleUploaded = (result) => {
     setActiveFileId(result.file_id);
-    // Refresh documents list
     listDocuments().then(setDocuments).catch(() => {});
   };
 
@@ -73,8 +71,18 @@ export default function App() {
     }
   };
 
-  const handleQueryResult = (result) => {
-    setLastQueryResult(result);
+  const handleQueryResult = (result) => setLastQueryResult(result);
+
+  // Navigate to architectures tab and optionally open a specific showcase type
+  const handleShowcaseSelect = (ragId) => {
+    setShowcaseFocusId(ragId);
+    setActiveTab('architectures');
+  };
+
+  // "Try It" from showcase: select the engine and navigate to query tab
+  const handleTryIt = (engineId) => {
+    setSelectedRagType(engineId);
+    setActiveTab('query');
   };
 
   const formatBytes = (bytes) => {
@@ -97,8 +105,8 @@ export default function App() {
               <p>Model Comparison Lab</p>
             </div>
           </div>
-          <button 
-            onClick={toggleTheme} 
+          <button
+            onClick={toggleTheme}
             className="theme-toggle"
             title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
           >
@@ -111,6 +119,7 @@ export default function App() {
           ragTypes={ragTypes}
           selectedType={selectedRagType}
           onSelect={setSelectedRagType}
+          onShowcaseSelect={handleShowcaseSelect}
         />
 
         {/* Documents List */}
@@ -164,28 +173,40 @@ export default function App() {
 
       {/* ── Main Content ────────────────────────────────────── */}
       <main className="main-content" id="main-content">
-        {/* Upload */}
-        <FileUpload onUploaded={handleUploaded} />
+        {/* Upload — hidden on architectures tab */}
+        {activeTab !== 'architectures' && (
+          <FileUpload onUploaded={handleUploaded} />
+        )}
 
         {/* Tabs */}
         <div className="tabs" id="main-tabs">
           <button
             className={`tab ${activeTab === 'query' ? 'active' : ''}`}
             onClick={() => setActiveTab('query')}
+            id="tab-query"
           >
             <IconMessage /> Query
           </button>
           <button
             className={`tab ${activeTab === 'chunks' ? 'active' : ''}`}
             onClick={() => setActiveTab('chunks')}
+            id="tab-chunks"
           >
             <IconLayers /> Chunks
           </button>
           <button
             className={`tab ${activeTab === 'compare' ? 'active' : ''}`}
             onClick={() => setActiveTab('compare')}
+            id="tab-compare"
           >
             <IconBarChart /> Compare
+          </button>
+          <button
+            className={`tab ${activeTab === 'architectures' ? 'active' : ''}`}
+            onClick={() => setActiveTab('architectures')}
+            id="tab-architectures"
+          >
+            <IconBook /> Architectures
           </button>
         </div>
 
@@ -219,6 +240,14 @@ export default function App() {
 
         {activeTab === 'compare' && (
           <CompareView fileId={activeFileId} />
+        )}
+
+        {activeTab === 'architectures' && (
+          <ArchitectureShowcase
+            ragTypes={ragTypes}
+            focusId={showcaseFocusId}
+            onTryIt={handleTryIt}
+          />
         )}
       </main>
     </div>
