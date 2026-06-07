@@ -38,3 +38,6 @@ Thumbs.db
 *.log
 /aienv
 rag_architectures.md
+
+# Docker
+docker-compose.override.yml
