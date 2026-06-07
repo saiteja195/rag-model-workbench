@@ -23,6 +23,7 @@ services:
       - CHROMA_DIR=/app/data/chroma
       - UPLOADS_DIR=/app/data/uploads
       - CORS_ORIGINS=http://localhost,http://localhost:80,http://frontend
+      - HF_HOME=/app/data/huggingface
 
     # Ephemeral storage — user data lives only during container lifetime
     # /app/data: ChromaDB + uploaded documents (wiped on restart)
@@ -75,11 +76,11 @@ services:
       - no-new-privileges:true
     read_only: true
 
-    # Nginx needs write access to cache/logs/pid
+    # Nginx needs write access to cache/logs/pid (nginx user = UID 101 on Alpine)
     tmpfs:
-      - /var/cache/nginx:size=50M
-      - /var/log/nginx:size=10M
-      - /var/run:size=1M
+      - /var/cache/nginx:size=50M,uid=101,gid=101
+      - /var/log/nginx:size=10M,uid=101,gid=101
+      - /var/run:size=1M,uid=101,gid=101
       - /tmp:size=10M
 
     # Resource limits
