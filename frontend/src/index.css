@@ -106,6 +106,7 @@
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+  --icon-bg: rgba(0, 0, 0, 0.05);
 }
 
 html {
@@ -361,7 +362,8 @@ h3 { font-size: 1.15rem; }
   align-items: center;
   justify-content: center;
   border-radius: var(--radius-sm);
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--icon-bg, rgba(255, 255, 255, 0.05));
+  color: var(--card-accent);
 }
 
 .rag-card-name {
@@ -1635,7 +1637,7 @@ h3 { font-size: 1.15rem; }
 .arch-card-selected::before { opacity: 1 !important; }
 
 .arch-card-top { display: flex; align-items: center; justify-content: space-between; }
-.arch-card-icon { font-size: 1.5rem; line-height: 1; }
+.arch-card-icon { font-size: 1.5rem; line-height: 1; color: var(--card-color); }
 .arch-card-name { font-size: 0.95rem; font-weight: 700; color: var(--text-primary); letter-spacing: -0.01em; margin-top: 4px; }
 .arch-card-desc { font-size: 0.75rem; color: var(--text-tertiary); line-height: 1.6; flex: 1; }
 .arch-card-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 4px; padding-top: 8px; border-top: 1px solid var(--glass-border); }
@@ -1695,7 +1697,7 @@ h3 { font-size: 1.15rem; }
 }
 
 .arch-detail-header-left { display: flex; align-items: center; gap: 16px; }
-.arch-detail-icon { font-size: 2.2rem; line-height: 1; }
+.arch-detail-icon { font-size: 2.2rem; line-height: 1; color: var(--panel-color); }
 .arch-detail-name { font-size: 1.4rem; font-weight: 800; letter-spacing: -0.02em; color: var(--text-primary); margin-bottom: 4px; }
 
 .arch-detail-close {
@@ -1779,7 +1781,7 @@ h3 { font-size: 1.15rem; }
 .comparison-row:hover { background: var(--bg-hover); }
 .runnable-row { background: rgba(99,102,241,0.02); }
 .comparison-td-name { display: flex; align-items: center; gap: 8px; padding: 10px 12px; font-weight: 500; color: var(--text-primary); white-space: nowrap; }
-.comparison-icon { font-size: 1.1rem; flex-shrink: 0; }
+.comparison-icon { font-size: 1.1rem; flex-shrink: 0; color: var(--text-primary); }
 .comparison-name { font-size: 0.8rem; color: var(--text-primary); }
 .comparison-runnable-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent-indigo); flex-shrink: 0; }
 .comparison-td { padding: 10px 12px; text-align: center; color: var(--text-secondary); font-size: 0.75rem; white-space: nowrap; }
