@@ -252,17 +252,31 @@ class GraphRAG(BaseRAG):
             output_preview=f"Found {len(vector_results)} semantic matches"
         ))
 
-        # Step 4: Merge results (graph-first, fill with vector)
+        # Step 4: Merge results (vector-first for semantic coverage, graph fills remaining)
+        # Vector results are prioritized because graph entity matching can return
+        # many chunks that contain a matched entity but don't answer the question.
+        # Graph results are added for any slots the vector search didn't fill.
         merge_start = time.time()
         seen_indices = set()
         merged = []
-        # Graph results first (relationship-aware)
-        for r in graph_results:
-            if r["chunk_index"] not in seen_indices:
-                merged.append(r)
-                seen_indices.add(r["chunk_index"])
-        # Fill remaining from vector results
+
+        # Mark which chunks appeared in graph results (for entity annotation later)
+        graph_chunk_indices = {r["chunk_index"] for r in graph_results}
+        graph_results_by_index = {r["chunk_index"]: r for r in graph_results}
+
+        # Vector results first (semantically relevant to the actual question)
         for r in vector_results:
+            if r["chunk_index"] not in seen_indices and len(merged) < top_k:
+                chunk = dict(r)
+                # Carry over entity metadata if this chunk also appeared in graph results
+                if chunk["chunk_index"] in graph_chunk_indices:
+                    graph_meta = graph_results_by_index[chunk["chunk_index"]].get("metadata", {})
+                    chunk["metadata"] = {**chunk["metadata"], **graph_meta}
+                merged.append(chunk)
+                seen_indices.add(chunk["chunk_index"])
+
+        # Fill any remaining slots with graph-only results (entity-matched but not in vector top-k)
+        for r in graph_results:
             if r["chunk_index"] not in seen_indices and len(merged) < top_k:
                 merged.append(r)
                 seen_indices.add(r["chunk_index"])
@@ -299,12 +313,21 @@ class GraphRAG(BaseRAG):
         ))
 
         # Step 6: Generate answer
-        prompt = (
-            "You are a helpful assistant. Answer the question using ONLY the "
-            "context provided below. This context was retrieved using a knowledge "
-            "graph that maps entity relationships. Pay attention to entity "
-            "annotations when connecting information across chunks."
+        has_entity_context = any(
+            r.get("metadata", {}).get("matched_entities") for r in merged
         )
+        if has_entity_context:
+            prompt = (
+                "You are a helpful assistant. Answer the question using ONLY the "
+                "context provided below. This context was retrieved using a knowledge "
+                "graph that maps entity relationships. Pay attention to entity "
+                "annotations when connecting information across chunks."
+            )
+        else:
+            prompt = (
+                "You are a helpful assistant. Answer the question using ONLY the "
+                "context provided below. Be concise and accurate."
+            )
         answer, gen_time = llm_service.generate(prompt, context, question)
         workflow_steps.append(self._make_step(
             6, "LLM Generation",

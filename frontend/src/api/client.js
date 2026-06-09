@@ -73,7 +73,7 @@ export async function compareRAGTypes(question, fileId, ragTypes = null, topK = 
     body: JSON.stringify({
       question,
       file_id: fileId,
-      rag_types: ragTypes || ['traditional', 'hybrid', 'graph', 'agentic'],
+      rag_types: ragTypes || ['traditional', 'hybrid', 'graph', 'agentic', 'naive', 'hyde'],
       top_k: topK,
     }),
   });
@@ -83,6 +83,10 @@ export async function compareRAGTypes(question, fileId, ragTypes = null, topK = 
 
 export async function getRAGTypes() {
   return request('/rag-types');
+}
+
+export async function getRAGTypeDetail(ragId) {
+  return request(`/rag-types/${ragId}`);
 }
 
 // ── Health ────────────────────────────────────────────────────────
