@@ -97,7 +97,7 @@ class CompareRequest(BaseModel):
     question: str
     file_id: str
     rag_types: list[str] = Field(
-        default_factory=lambda: ["traditional", "hybrid", "graph", "agentic"]
+        default_factory=lambda: ["traditional", "hybrid", "graph", "agentic", "naive", "hyde"]
     )
     top_k: int = 5
 

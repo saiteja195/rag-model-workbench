@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { compareRAGTypes } from '../api/client';
-import { IconBarChart, IconZap, IconTarget, IconNetwork, IconBot, IconLoader } from './Icons';
+import { IconBarChart, IconZap, IconTarget, IconNetwork, IconBot, IconLoader, IconSearch, IconBrain } from './Icons';
 
 const RAG_META = {
   traditional: { icon: <IconTarget />, color: '#6366f1' },
   hybrid:      { icon: <IconZap />, color: '#f59e0b' },
   graph:       { icon: <IconNetwork />, color: '#10b981' },
   agentic:     { icon: <IconBot />, color: '#ec4899' },
+  naive:       { icon: <IconSearch />, color: '#64748b' },
+  hyde:        { icon: <IconBrain />, color: '#8b5cf6' },
 };
 
 export default function CompareView({ fileId }) {
@@ -34,10 +36,12 @@ export default function CompareView({ fileId }) {
     if (e.key === 'Enter') handleCompare();
   };
 
-  // Find the fastest result
-  const fastestIdx = results?.results?.reduce((minIdx, r, i, arr) =>
-    r.total_time_ms < arr[minIdx].total_time_ms ? i : minIdx, 0
-  );
+  // Find the fastest result, ignoring error entries (total_time_ms === 0 means exception placeholder)
+  const fastestIdx = results?.results?.reduce((minIdx, r, i, arr) => {
+    if (r.total_time_ms === 0) return minIdx;
+    if (arr[minIdx].total_time_ms === 0) return i;
+    return r.total_time_ms < arr[minIdx].total_time_ms ? i : minIdx;
+  }, 0);
 
   return (
     <div className="glass-card">
