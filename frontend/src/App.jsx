@@ -1,259 +1,164 @@
-import { useState, useEffect } from 'react';
-import { getRAGTypes, listDocuments, deleteDocument } from './api/client';
-import FileUpload from './components/FileUpload';
-import RAGSelector from './components/RAGSelector';
-import ChunkViewer from './components/ChunkViewer';
-import ChatInterface from './components/ChatInterface';
-import WorkflowDiagram from './components/WorkflowDiagram';
-import MetricsPanel from './components/MetricsPanel';
+import { useState, useCallback, useEffect } from 'react';
+import useTheme from './hooks/useTheme';
+import useRagTypes from './hooks/useRagTypes';
+import useDocuments from './hooks/useDocuments';
+import Sidebar from './components/Sidebar';
+import QueryView from './components/QueryView';
 import CompareView from './components/CompareView';
+import ChunkViewer from './components/ChunkViewer';
 import ArchitectureShowcase from './components/ArchitectureShowcase';
-import {
-  IconLayers, IconMessage, IconBarChart, IconFileText,
-  IconNetwork, IconSun, IconMoon, IconBook,
-} from './components/Icons';
+import { EngineDot } from './components/ui';
+import { IconNetwork, IconSun, IconMoon, IconMenu } from './components/Icons';
+import { findType } from './utils/format';
+
+const TABS = [
+  { id: 'query', label: 'Query' },
+  { id: 'compare', label: 'Compare' },
+  { id: 'chunks', label: 'Chunks' },
+  { id: 'library', label: 'Library' },
+];
 
 export default function App() {
-  const [theme, setTheme] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('theme');
-      if (saved) return saved;
-      if (window.matchMedia('(prefers-color-scheme: light)').matches) return 'light';
-    }
-    return 'dark';
-  });
-  const [ragTypes, setRagTypes] = useState([]);
+  const [theme, toggleTheme] = useTheme();
+  const { ragTypes, error: ragTypesError, reload: reloadRagTypes } = useRagTypes();
+  const { documents, error: documentsError, refresh, remove } = useDocuments();
+
+  const [tab, setTab] = useState('query');
   const [selectedRagType, setSelectedRagType] = useState('traditional');
-  const [documents, setDocuments] = useState([]);
   const [activeFileId, setActiveFileId] = useState(null);
-  const [activeTab, setActiveTab] = useState('architectures'); // query, chunks, compare, architectures
-  const [lastQueryResult, setLastQueryResult] = useState(null);
-  const [showcaseFocusId, setShowcaseFocusId] = useState(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
+  // Conversations are kept per document so switching tabs or files never loses them.
+  const [chats, setChats] = useState({});
+  const [selectedByFile, setSelectedByFile] = useState({});
+
+  // Start on the first document rather than an empty selection.
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('theme', theme);
-  }, [theme]);
+    if (!activeFileId && documents.length > 0) setActiveFileId(documents[0].file_id);
+  }, [activeFileId, documents]);
 
-  const toggleTheme = () => setTheme(prev => prev === 'dark' ? 'light' : 'dark');
-
-  useEffect(() => {
-    getRAGTypes()
-      .then(setRagTypes)
-      .catch(() => {
-        setRagTypes([
-          { id: 'traditional', name: 'Traditional RAG', icon: '🎯', color: '#6366f1', category: 'runnable', best_for: 'Simple, direct questions', workflow_steps: [], strengths: [], weaknesses: [] },
-          { id: 'hybrid',      name: 'Hybrid RAG',      icon: '⚡', color: '#f59e0b', category: 'runnable', best_for: 'Questions with specific terms', workflow_steps: [], strengths: [], weaknesses: [] },
-          { id: 'graph',       name: 'GraphRAG',         icon: '🕸️', color: '#10b981', category: 'runnable', best_for: 'Relationship-based questions', workflow_steps: [], strengths: [], weaknesses: [] },
-          { id: 'agentic',     name: 'Agentic RAG',      icon: '🤖', color: '#ec4899', category: 'runnable', best_for: 'Complex, multi-faceted questions', workflow_steps: [], strengths: [], weaknesses: [] },
-        ]);
-      });
-
-    listDocuments().then(setDocuments).catch(() => {});
+  const messages = chats[activeFileId] || [];
+  const appendMessage = useCallback((fileId, message) => {
+    setChats(prev => ({ ...prev, [fileId]: [...(prev[fileId] || []), message] }));
+    setSelectedByFile(prev => ({ ...prev, [fileId]: null })); // follow the newest answer
   }, []);
+
+  const lastResult = [...messages].reverse().find(m => m.result)?.result;
 
   const handleUploaded = (result) => {
     setActiveFileId(result.file_id);
-    listDocuments().then(setDocuments).catch(() => {});
+    refresh();
   };
 
-  const handleDeleteDoc = async (e, fileId) => {
-    e.stopPropagation();
-    try {
-      await deleteDocument(fileId);
-      setDocuments(prev => prev.filter(d => d.file_id !== fileId));
-      if (activeFileId === fileId) {
-        setActiveFileId(null);
-        setLastQueryResult(null);
-      }
-    } catch (err) {
-      console.error('Delete failed:', err);
-    }
+  const handleDelete = async (fileId) => {
+    if (!(await remove(fileId))) return;
+    setChats(({ [fileId]: _, ...rest }) => rest);
+    if (activeFileId === fileId) setActiveFileId(null);
   };
 
-  const handleQueryResult = (result) => setLastQueryResult(result);
+  const activeDoc = documents.find(d => d.file_id === activeFileId);
+  const activeEngine = findType(ragTypes, selectedRagType);
+  const showSidebar = tab !== 'library';
 
-  // Navigate to architectures tab and optionally open a specific showcase type
-  const handleShowcaseSelect = (ragId) => {
-    setShowcaseFocusId(ragId);
-    setActiveTab('architectures');
-  };
-
-  // "Try It" from showcase: select the engine and navigate to query tab
-  const handleTryIt = (engineId) => {
-    setSelectedRagType(engineId);
-    setActiveTab('query');
-  };
-
-  const formatBytes = (bytes) => {
-    if (bytes < 1024) return bytes + ' B';
-    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
-    return (bytes / 1048576).toFixed(1) + ' MB';
-  };
+  const goTo = (id) => { setTab(id); setDrawerOpen(false); };
+  const tryEngine = (engineId) => { setSelectedRagType(engineId); goTo('query'); };
 
   return (
-    <div className={`app-layout ${activeTab === 'architectures' ? 'architectures-mode' : ''}`} id="app-layout">
-      {/* ── Sidebar ─────────────────────────────────────────── */}
-      {activeTab !== 'architectures' && (
-        <aside className="sidebar" id="sidebar">
-          <div className="brand" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <div className="brand-icon">
-                <IconNetwork />
-              </div>
-              <div className="brand-text">
-                <h1>RAG Workbench</h1>
-                <p>Model Comparison Lab</p>
-              </div>
-            </div>
-            <button
-              onClick={toggleTheme}
-              className="theme-toggle"
-              title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-            >
-              {theme === 'dark' ? <IconSun /> : <IconMoon />}
-            </button>
-          </div>
+    <div className={`shell ${showSidebar ? 'with-sidebar' : ''}`}>
+      <header className="topbar">
+        <div className="brand">
+          <span className="brand-mark"><IconNetwork /></span>
+          <span className="brand-name">RAG Workbench</span>
+        </div>
 
-          {/* RAG Type Selector */}
-          <RAGSelector
+        <nav className="nav" aria-label="Sections">
+          {TABS.map(t => (
+            <button
+              key={t.id}
+              type="button"
+              className="nav-item"
+              aria-current={tab === t.id ? 'page' : undefined}
+              onClick={() => goTo(t.id)}
+            >
+              {t.label}
+            </button>
+          ))}
+        </nav>
+
+        <button
+          type="button"
+          className="icon-btn"
+          onClick={toggleTheme}
+          aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
+        >
+          {theme === 'dark' ? <IconSun /> : <IconMoon />}
+        </button>
+      </header>
+
+      <div className="body">
+        {showSidebar && (
+          <Sidebar
+            open={drawerOpen}
+            onClose={() => setDrawerOpen(false)}
+            documents={documents}
+            documentsError={documentsError}
+            activeFileId={activeFileId}
+            onSelectDocument={(id) => { setActiveFileId(id); setDrawerOpen(false); }}
+            onDeleteDocument={handleDelete}
+            onUploaded={handleUploaded}
             ragTypes={ragTypes}
-            selectedType={selectedRagType}
-            onSelect={setSelectedRagType}
-            onShowcaseSelect={handleShowcaseSelect}
+            ragTypesError={ragTypesError}
+            onRetryRagTypes={reloadRagTypes}
+            selectedRagType={selectedRagType}
+            onSelectRagType={(id) => { setSelectedRagType(id); setDrawerOpen(false); }}
+            onBrowseLibrary={() => goTo('library')}
           />
-
-          {/* Documents List */}
-          <div>
-            <div className="section-header">
-              <h2>DOCUMENTS</h2>
-              <div className="line" />
-            </div>
-            <div className="doc-list" id="doc-list">
-              {documents.length === 0 ? (
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', textAlign: 'center', padding: '12px' }}>
-                  No documents uploaded yet
-                </p>
-              ) : (
-                documents.map(doc => (
-                  <div
-                    key={doc.file_id}
-                    className={`doc-item ${activeFileId === doc.file_id ? 'active' : ''}`}
-                    onClick={() => setActiveFileId(doc.file_id)}
-                    id={`doc-${doc.file_id}`}
-                  >
-                    <span className="doc-item-icon">
-                      <IconFileText />
-                    </span>
-                    <div className="doc-item-info">
-                      <div className="doc-item-name">{doc.filename}</div>
-                      <div className="doc-item-meta">
-                        {doc.chunk_count} chunks · {formatBytes(doc.file_size)}
-                      </div>
-                    </div>
-                    <button
-                      className="doc-item-delete"
-                      onClick={(e) => handleDeleteDoc(e, doc.file_id)}
-                      title="Delete document"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          {/* Backend status */}
-          <div style={{ marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid var(--glass-border)' }}>
-            <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textAlign: 'center' }}>
-              🔌 Backend: localhost:8000
-            </p>
-          </div>
-        </aside>
-      )}
-
-      {/* ── Main Content ────────────────────────────────────── */}
-      <main className="main-content" id="main-content">
-        {/* Upload — hidden on architectures tab */}
-        {activeTab !== 'architectures' && (
-          <FileUpload onUploaded={handleUploaded} />
         )}
 
-        {/* Tabs */}
-        {activeTab !== 'architectures' && (
-          <div className="tabs" id="main-tabs">
-            <button
-              className={`tab ${activeTab === 'query' ? 'active' : ''}`}
-              onClick={() => setActiveTab('query')}
-              id="tab-query"
-            >
-              <IconMessage /> Query
-            </button>
-            <button
-              className={`tab ${activeTab === 'chunks' ? 'active' : ''}`}
-              onClick={() => setActiveTab('chunks')}
-              id="tab-chunks"
-            >
-              <IconLayers /> Chunks
-            </button>
-            <button
-              className={`tab ${activeTab === 'compare' ? 'active' : ''}`}
-              onClick={() => setActiveTab('compare')}
-              id="tab-compare"
-            >
-              <IconBarChart /> Compare
-            </button>
-            <button
-              className={`tab ${activeTab === 'architectures' ? 'active' : ''}`}
-              onClick={() => setActiveTab('architectures')}
-              id="tab-architectures"
-            >
-              <IconBook /> Architectures
-            </button>
-          </div>
-        )}
+        <main className="main" id="main">
+          {showSidebar && (
+            <div className="context-bar">
+              <span className="context-item">
+                <span className="muted">Document</span>
+                <strong>{activeDoc?.filename || 'None selected'}</strong>
+              </span>
+              <span className="context-item">
+                <span className="muted">Engine</span>
+                <strong><EngineDot color={activeEngine?.color} />{activeEngine?.name || selectedRagType}</strong>
+              </span>
+              <button type="button" className="btn btn-quiet context-edit" onClick={() => setDrawerOpen(true)}>
+                <IconMenu /> Change
+              </button>
+            </div>
+          )}
 
-        {/* Tab Content */}
-        {activeTab === 'query' && (
-          <>
-            <ChatInterface
+          {tab === 'query' && (
+            <QueryView
               fileId={activeFileId}
               ragType={selectedRagType}
-              onQueryResult={handleQueryResult}
+              ragTypes={ragTypes}
+              messages={messages}
+              onAppend={appendMessage}
+              onUploaded={handleUploaded}
+              selectedIndex={selectedByFile[activeFileId] ?? null}
+              onSelect={(i) => setSelectedByFile(prev => ({ ...prev, [activeFileId]: i }))}
             />
-
-            {lastQueryResult && (
-              <>
-                <MetricsPanel queryResult={lastQueryResult} />
-                <WorkflowDiagram
-                  steps={lastQueryResult.workflow_steps}
-                  ragType={lastQueryResult.rag_type}
-                />
-              </>
-            )}
-          </>
-        )}
-
-        {activeTab === 'chunks' && (
-          <ChunkViewer
-            fileId={activeFileId}
-            highlightedChunks={lastQueryResult?.retrieved_chunks || []}
-          />
-        )}
-
-        {activeTab === 'compare' && (
-          <CompareView fileId={activeFileId} />
-        )}
-
-        {activeTab === 'architectures' && (
-          <ArchitectureShowcase
-            ragTypes={ragTypes}
-            focusId={showcaseFocusId}
-            onTryIt={handleTryIt}
-          />
-        )}
-      </main>
+          )}
+          {tab === 'compare' && (
+            <CompareView fileId={activeFileId} ragTypes={ragTypes} onUploaded={handleUploaded} />
+          )}
+          {tab === 'chunks' && (
+            <ChunkViewer
+              fileId={activeFileId}
+              highlightedChunks={lastResult?.retrieved_chunks || []}
+              onUploaded={handleUploaded}
+            />
+          )}
+          {tab === 'library' && (
+            <ArchitectureShowcase ragTypes={ragTypes} onTryIt={tryEngine} />
+          )}
+        </main>
+      </div>
     </div>
   );
 }

@@ -1,143 +1,80 @@
 import { useState, useRef } from 'react';
 import { uploadDocument } from '../api/client';
-import { IconUpload, IconLoader, IconFileText } from './Icons';
+import { IconUpload, IconLoader } from './Icons';
 
-export default function FileUpload({ onUploaded }) {
+/**
+ * Drop zone for .txt / .pdf / .md files.
+ * variant="compact" fits in the sidebar; "full" is the empty-state version.
+ */
+export default function FileUpload({ onUploaded, variant = 'compact' }) {
   const [isDragOver, setIsDragOver] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadResult, setUploadResult] = useState(null);
   const [error, setError] = useState(null);
-  const fileInputRef = useRef(null);
-
-  const handleDrag = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-
-  const handleDragEnter = (e) => {
-    handleDrag(e);
-    setIsDragOver(true);
-  };
-
-  const handleDragLeave = (e) => {
-    handleDrag(e);
-    setIsDragOver(false);
-  };
-
-  const handleDrop = (e) => {
-    handleDrag(e);
-    setIsDragOver(false);
-    const files = e.dataTransfer?.files;
-    if (files?.length > 0) {
-      processFile(files[0]);
-    }
-  };
-
-  const handleFileSelect = (e) => {
-    const files = e.target.files;
-    if (files?.length > 0) {
-      processFile(files[0]);
-    }
-  };
+  const inputRef = useRef(null);
 
   const processFile = async (file) => {
     setError(null);
-    setUploadResult(null);
     setIsUploading(true);
-
     try {
       const result = await uploadDocument(file);
-      setUploadResult(result);
-      if (onUploaded) onUploaded(result);
+      onUploaded?.(result);
     } catch (err) {
       setError(err.message);
     } finally {
       setIsUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
+      if (inputRef.current) inputRef.current.value = '';
     }
   };
 
-  const formatBytes = (bytes) => {
-    if (bytes < 1024) return bytes + ' B';
-    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
-    return (bytes / 1048576).toFixed(1) + ' MB';
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    const file = e.dataTransfer?.files?.[0];
+    if (file) processFile(file);
   };
 
-  return (
-    <div className="glass-card">
-      <div className="section-header">
-        <IconFileText />
-        <h2>UPLOAD DOCUMENT</h2>
-        <div className="line" />
-      </div>
+  const open = () => !isUploading && inputRef.current?.click();
 
+  return (
+    <div className={`upload upload-${variant}`}>
       <div
-        className={`upload-zone ${isDragOver ? 'dragover' : ''}`}
-        onDragEnter={handleDragEnter}
-        onDragOver={handleDrag}
-        onDragLeave={handleDragLeave}
+        className={`upload-zone ${isDragOver ? 'dragover' : ''} ${isUploading ? 'busy' : ''}`}
+        role="button"
+        tabIndex={0}
+        aria-busy={isUploading}
+        onClick={open}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            open();
+          }
+        }}
+        onDragEnter={(e) => { e.preventDefault(); setIsDragOver(true); }}
+        onDragOver={(e) => e.preventDefault()}
+        onDragLeave={() => setIsDragOver(false)}
         onDrop={handleDrop}
-        onClick={() => fileInputRef.current?.click()}
-        id="upload-zone"
       >
         <input
-          ref={fileInputRef}
+          ref={inputRef}
           type="file"
           accept=".txt,.pdf,.md"
-          onChange={handleFileSelect}
-          style={{ display: 'none' }}
-          id="file-input"
+          hidden
+          onChange={(e) => e.target.files?.[0] && processFile(e.target.files[0])}
         />
-
-        {isUploading ? (
-          <>
-            <span className="upload-zone-icon">
-              <IconLoader />
-            </span>
-            <h3>Processing document...</h3>
-            <p>Parsing, chunking, and embedding your file</p>
-            <div className="upload-progress">
-              <div className="progress-bar-container">
-                <div className="progress-bar" style={{ width: '80%' }} />
-              </div>
-            </div>
-          </>
-        ) : (
-          <>
-            <span className="upload-zone-icon">
-              <IconUpload />
-            </span>
-            <h3>Drop your document here</h3>
-            <p>
-              or <span className="highlight">click to browse</span>
-              {' '}— supports .txt, .pdf, .md
-            </p>
-          </>
-        )}
-      </div>
-
-      {uploadResult && (
-        <div className="upload-stats" id="upload-stats">
-          <div className="upload-stat">
-            <span className="upload-stat-value">{uploadResult.chunk_count}</span>
-            <span className="upload-stat-label">Chunks</span>
-          </div>
-          <div className="upload-stat">
-            <span className="upload-stat-value">{uploadResult.processing_time_ms.toFixed(0)}ms</span>
-            <span className="upload-stat-label">Processing</span>
-          </div>
-          <div className="upload-stat">
-            <span className="upload-stat-value">{formatBytes(uploadResult.file_size)}</span>
-            <span className="upload-stat-label">File Size</span>
-          </div>
+        <span className="upload-icon" aria-hidden="true">
+          {isUploading ? <IconLoader /> : <IconUpload />}
+        </span>
+        <div className="upload-copy">
+          <strong>{isUploading ? 'Processing document' : 'Upload a document'}</strong>
+          <span>
+            {isUploading
+              ? 'Parsing, chunking and embedding'
+              : 'Drop a file or click to browse. .txt, .pdf, .md'}
+          </span>
         </div>
-      )}
-
-      {error && (
-        <p style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '12px', textAlign: 'center' }}>
-          ❌ {error}
-        </p>
-      )}
+        {isUploading && <span className="upload-progress" aria-hidden="true" />}
+      </div>
+      {error && <p className="form-error" role="alert">{error}</p>}
     </div>
   );
 }

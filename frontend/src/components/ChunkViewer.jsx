@@ -1,119 +1,117 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { getDocumentChunks } from '../api/client';
-import { IconLayers, IconFileText } from './Icons';
+import { IconLayers } from './Icons';
+import { EmptyState, SearchInput } from './ui';
+import FileUpload from './FileUpload';
+import { ScoreBadge } from './RunInspector';
 
-export default function ChunkViewer({ fileId, highlightedChunks = [] }) {
+const PAGE = 40;
+
+export default function ChunkViewer({ fileId, highlightedChunks = [], onUploaded }) {
   const [chunks, setChunks] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [filter, setFilter] = useState('');
+  const [visible, setVisible] = useState(PAGE);
+  const [retrievedFirst, setRetrievedFirst] = useState(true);
 
   useEffect(() => {
-    if (!fileId) return;
+    if (!fileId) { setChunks([]); return; }
     setLoading(true);
+    setError(null);
     getDocumentChunks(fileId)
       .then(setChunks)
-      .catch(console.error)
+      .catch(err => setError(err.message))
       .finally(() => setLoading(false));
   }, [fileId]);
 
-  const highlightedSet = new Set(highlightedChunks.map(c => c.chunk_index));
+  useEffect(() => setVisible(PAGE), [filter, fileId, retrievedFirst]);
 
-  const filteredChunks = filter
-    ? chunks.filter(c => c.text.toLowerCase().includes(filter.toLowerCase()))
-    : chunks;
+  const scores = useMemo(
+    () => new Map(highlightedChunks.map(c => [c.chunk_index, c.score])),
+    [highlightedChunks],
+  );
 
-  // Sort: highlighted chunks first
-  const sortedChunks = [...filteredChunks].sort((a, b) => {
-    const aHl = highlightedSet.has(a.chunk_index) ? 0 : 1;
-    const bHl = highlightedSet.has(b.chunk_index) ? 0 : 1;
-    if (aHl !== bHl) return aHl - bHl;
-    return a.chunk_index - b.chunk_index;
-  });
-
-  const getScoreClass = (chunkIndex) => {
-    const match = highlightedChunks.find(c => c.chunk_index === chunkIndex);
-    if (!match) return '';
-    if (match.score > 0.7) return 'high';
-    if (match.score > 0.4) return 'medium';
-    return 'low';
-  };
-
-  const getScore = (chunkIndex) => {
-    const match = highlightedChunks.find(c => c.chunk_index === chunkIndex);
-    return match ? match.score : null;
-  };
+  const sorted = useMemo(() => {
+    const q = filter.toLowerCase();
+    const matches = q ? chunks.filter(c => c.text.toLowerCase().includes(q)) : chunks;
+    return [...matches].sort((a, b) => {
+      if (retrievedFirst) {
+        const d = Number(scores.has(b.chunk_index)) - Number(scores.has(a.chunk_index));
+        if (d) return d;
+      }
+      return a.chunk_index - b.chunk_index;
+    });
+  }, [chunks, filter, scores, retrievedFirst]);
 
   if (!fileId) {
     return (
-      <div className="glass-card">
-        <div className="empty-state">
-          <span className="empty-state-icon">
-            <IconFileText />
-          </span>
-          <h3>No Document Selected</h3>
-          <p>Upload a document to see its chunks here</p>
-        </div>
+      <div className="panel">
+        <EmptyState icon={<IconLayers />} title="Pick a document to see its chunks">
+          Select one in the setup panel or upload a new file.
+        </EmptyState>
+        <FileUpload variant="full" onUploaded={onUploaded} />
       </div>
     );
   }
 
   return (
-    <div className="glass-card">
-      <div className="section-header">
-        <IconLayers />
-        <h2>DOCUMENT CHUNKS ({chunks.length})</h2>
-        <div className="line" />
+    <div className="chunks">
+      <header className="page-head">
+        <h1>Chunks <span className="count">{chunks.length}</span></h1>
+        <p>
+          {scores.size > 0
+            ? `${scores.size} chunks were retrieved by your last query and are marked with their similarity score.`
+            : 'Run a query to see which chunks it retrieves.'}
+        </p>
+      </header>
+
+      <div className="toolbar">
+        <SearchInput value={filter} onChange={setFilter} placeholder="Filter chunks by text" />
+        {scores.size > 0 && (
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={retrievedFirst}
+              onChange={(e) => setRetrievedFirst(e.target.checked)}
+            />
+            Retrieved first
+          </label>
+        )}
       </div>
 
-      <div style={{ marginBottom: '12px' }}>
-        <input
-          type="text"
-          className="chat-input"
-          placeholder="Filter chunks..."
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          style={{ borderRadius: '8px', width: '100%' }}
-          id="chunk-filter"
-        />
-      </div>
+      {error && <p className="form-error" role="alert">Couldn't load chunks: {error}</p>}
+      {loading && <div className="loading-row"><span className="spinner" aria-label="Loading chunks" /></div>}
 
-      {loading ? (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}>
-          <div className="loading-spinner" />
-        </div>
-      ) : (
-        <div className="chunk-viewer" id="chunk-viewer">
-          {sortedChunks.map((chunk) => {
-            const isHighlighted = highlightedSet.has(chunk.chunk_index);
-            const score = getScore(chunk.chunk_index);
-            return (
-              <div
-                key={chunk.chunk_id}
-                className={`chunk-card ${isHighlighted ? 'highlighted' : ''}`}
-                id={`chunk-${chunk.chunk_index}`}
-              >
-                <div className="chunk-header">
-                  <span className="chunk-index">Chunk #{chunk.chunk_index}</span>
-                  {score !== null && (
-                    <span className={`chunk-score ${getScoreClass(chunk.chunk_index)}`}>
-                      Score: {score.toFixed(3)}
-                    </span>
-                  )}
-                </div>
-                <div className="chunk-text">
-                  {chunk.text.length > 300
-                    ? chunk.text.substring(0, 300) + '...'
-                    : chunk.text}
-                </div>
-                {chunk.embedding_preview && chunk.embedding_preview.length > 0 && (
-                  <div className="chunk-embedding">
-                    embedding: [{chunk.embedding_preview.map(v => v.toFixed(4)).join(', ')}, ...]
-                  </div>
-                )}
+      {!loading && sorted.length === 0 && !error && (
+        <EmptyState title="No chunks match">Try a different filter.</EmptyState>
+      )}
+
+      <ul className="chunk-list">
+        {sorted.slice(0, visible).map(chunk => {
+          const score = scores.get(chunk.chunk_index);
+          return (
+            <li key={chunk.chunk_id} className={`chunk ${score != null ? 'retrieved' : ''}`}>
+              <div className="chunk-head">
+                <span className="mono">Chunk {chunk.chunk_index}</span>
+                {score != null && <ScoreBadge score={score} />}
               </div>
-            );
-          })}
-        </div>
+              <p className="clamp-4">{chunk.text}</p>
+              {chunk.embedding_preview?.length > 0 && (
+                <details className="chunk-embedding">
+                  <summary>Embedding preview</summary>
+                  <code>[{chunk.embedding_preview.map(v => v.toFixed(4)).join(', ')}, …]</code>
+                </details>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+
+      {sorted.length > visible && (
+        <button type="button" className="btn btn-quiet more" onClick={() => setVisible(v => v + PAGE)}>
+          Show {Math.min(PAGE, sorted.length - visible)} more of {sorted.length - visible} remaining
+        </button>
       )}
     </div>
   );

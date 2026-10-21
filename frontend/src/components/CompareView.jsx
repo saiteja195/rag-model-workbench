@@ -1,141 +1,157 @@
 import { useState } from 'react';
-import { compareRAGTypes } from '../api/client';
-import { IconBarChart, IconZap, IconTarget, IconNetwork, IconBot, IconLoader, IconSearch, IconBrain } from './Icons';
+import { runQuery } from '../api/client';
+import { IconBarChart, IconCheck } from './Icons';
+import { EmptyState, EngineDot, LatencyBar, Stat } from './ui';
+import FileUpload from './FileUpload';
+import { formatMs } from '../utils/format';
 
-const RAG_META = {
-  traditional: { icon: <IconTarget />, color: '#6366f1' },
-  hybrid:      { icon: <IconZap />, color: '#f59e0b' },
-  graph:       { icon: <IconNetwork />, color: '#10b981' },
-  agentic:     { icon: <IconBot />, color: '#ec4899' },
-  naive:       { icon: <IconSearch />, color: '#64748b' },
-  hyde:        { icon: <IconBrain />, color: '#8b5cf6' },
-};
-
-export default function CompareView({ fileId }) {
+export default function CompareView({ fileId, ragTypes, onUploaded }) {
+  const runnable = ragTypes.filter(r => r.category === 'runnable');
+  const [chosen, setChosen] = useState(null); // null = all runnable
   const [question, setQuestion] = useState('');
-  const [results, setResults] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [runs, setRuns] = useState({}); // id -> { status, result, error }
 
-  const handleCompare = async () => {
-    if (!question.trim() || !fileId || isLoading) return;
-    setIsLoading(true);
-    setError(null);
+  const selectedIds = chosen ?? runnable.map(r => r.id);
+  const isRunning = Object.values(runs).some(r => r.status === 'loading');
 
-    try {
-      const res = await compareRAGTypes(question, fileId);
-      setResults(res);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
+  const toggle = (id) => {
+    const next = selectedIds.includes(id)
+      ? selectedIds.filter(x => x !== id)
+      : [...selectedIds, id];
+    setChosen(next);
   };
 
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter') handleCompare();
+  const compare = () => {
+    const q = question.trim();
+    if (!q || !fileId || isRunning || selectedIds.length === 0) return;
+
+    setRuns(Object.fromEntries(selectedIds.map(id => [id, { status: 'loading' }])));
+    // Each engine reports as soon as it finishes instead of waiting for the slowest.
+    selectedIds.forEach(id => {
+      runQuery(q, id, fileId)
+        .then(result => setRuns(prev => ({ ...prev, [id]: { status: 'done', result } })))
+        .catch(err => setRuns(prev => ({ ...prev, [id]: { status: 'error', error: err.message } })));
+    });
   };
 
-  // Find the fastest result, ignoring error entries (total_time_ms === 0 means exception placeholder)
-  const fastestIdx = results?.results?.reduce((minIdx, r, i, arr) => {
-    if (r.total_time_ms === 0) return minIdx;
-    if (arr[minIdx].total_time_ms === 0) return i;
-    return r.total_time_ms < arr[minIdx].total_time_ms ? i : minIdx;
-  }, 0);
+  const entries = selectedIds
+    .filter(id => runs[id])
+    .map(id => ({ rag: runnable.find(r => r.id === id), id, ...runs[id] }));
+  const done = entries.filter(e => e.status === 'done');
+  const slowest = Math.max(1, ...done.map(e => e.result.total_time_ms));
+  const fastestId = !isRunning && done.length > 1
+    ? done.reduce((a, b) => (b.result.total_time_ms < a.result.total_time_ms ? b : a)).id
+    : null;
+
+  if (!fileId) {
+    return (
+      <div className="panel">
+        <EmptyState icon={<IconBarChart />} title="Pick a document to compare engines">
+          Select one in the setup panel or upload a new file.
+        </EmptyState>
+        <FileUpload variant="full" onUploaded={onUploaded} />
+      </div>
+    );
+  }
 
   return (
-    <div className="glass-card">
-      <div className="section-header">
-        <IconBarChart />
-        <h2>COMPARE RAG TYPES</h2>
-        <div className="line" />
-      </div>
+    <div className="compare">
+      <header className="page-head">
+        <h1>Compare engines</h1>
+        <p>Ask one question and run it through several engines. Results appear as each one finishes.</p>
+      </header>
 
-      <p style={{ fontSize: '0.85rem', color: 'var(--text-tertiary)', marginBottom: '16px' }}>
-        Run the same question across all RAG types simultaneously and compare results side by side.
-      </p>
+      <fieldset className="engine-chips">
+        <legend>Engines to run</legend>
+        {runnable.map(rag => {
+          const on = selectedIds.includes(rag.id);
+          return (
+            <label key={rag.id} className={`chip chip-toggle ${on ? 'on' : ''}`}>
+              <input type="checkbox" checked={on} onChange={() => toggle(rag.id)} disabled={isRunning} />
+              {on ? <IconCheck /> : <EngineDot color={rag.color} />}
+              {rag.name}
+            </label>
+          );
+        })}
+      </fieldset>
 
-      <div className="chat-input-wrapper" style={{ marginBottom: '16px' }}>
+      <form className="composer" onSubmit={(e) => { e.preventDefault(); compare(); }}>
         <input
-          className="chat-input"
           type="text"
-          placeholder={fileId ? 'Ask a question to compare all RAG types...' : 'Upload a document first...'}
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
-          onKeyDown={handleKeyDown}
-          disabled={!fileId || isLoading}
-          id="compare-input"
+          placeholder="Ask a question to run through each engine"
+          aria-label="Question to compare"
+          disabled={isRunning}
         />
         <button
+          type="submit"
           className="btn btn-primary"
-          onClick={handleCompare}
-          disabled={!question.trim() || !fileId || isLoading}
-          id="compare-btn"
-          style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+          disabled={!question.trim() || isRunning || selectedIds.length === 0}
         >
-          {isLoading ? <IconLoader /> : 'Compare'}
+          {isRunning ? 'Running…' : `Compare ${selectedIds.length}`}
         </button>
-      </div>
+      </form>
 
-      {error && (
-        <p style={{ color: '#ef4444', fontSize: '0.85rem', marginBottom: '12px' }}>
-          ❌ {error}
-        </p>
+      {entries.length === 0 && (
+        <EmptyState icon={<IconBarChart />} title="No comparison yet">
+          Choose the engines above, then ask a question to see answers and timing side by side.
+        </EmptyState>
       )}
 
-      {results && results.results && (
-        <div className="compare-grid" id="compare-grid">
-          {results.results.map((result, i) => {
-            const meta = RAG_META[result.rag_type] || RAG_META.traditional;
-            const isWinner = i === fastestIdx;
-            return (
-              <div
-                key={result.rag_type}
-                className={`compare-card ${isWinner ? 'winner' : ''}`}
-                style={{ '--card-accent': meta.color }}
-                id={`compare-${result.rag_type}`}
-              >
-                <div className="compare-header">
-                  <span className="icon">{meta.icon}</span>
-                  <h3>{result.rag_type.charAt(0).toUpperCase() + result.rag_type.slice(1)} RAG</h3>
-                </div>
+      {done.length > 0 && (
+        <section className="panel" aria-label="Latency comparison">
+          <h2 className="panel-title">Latency</h2>
+          <ul className="latency-rank">
+            {[...done].sort((a, b) => a.result.total_time_ms - b.result.total_time_ms).map(e => (
+              <li key={e.id}>
+                <span className="latency-rank-name"><EngineDot color={e.rag?.color} />{e.rag?.name || e.id}</span>
+                <LatencyBar result={e.result} scale={slowest} />
+                <span className="mono">{formatMs(e.result.total_time_ms)}</span>
+              </li>
+            ))}
+          </ul>
+          <ul className="latency-legend">
+            <li><span className="latency-swatch seg-embed" />Embedding</li>
+            <li><span className="latency-swatch seg-retrieve" />Retrieval</li>
+            <li><span className="latency-swatch seg-generate" />Generation</li>
+          </ul>
+        </section>
+      )}
 
-                <div className="compare-answer">
-                  {result.answer}
-                </div>
+      {entries.length > 0 && (
+        <div className="compare-grid">
+          {entries.map(e => (
+            <article
+              key={e.id}
+              className={`run-card ${e.id === fastestId ? 'fastest' : ''}`}
+              style={{ '--dot': e.rag?.color }}
+              aria-busy={e.status === 'loading'}
+            >
+              <header>
+                <h3><EngineDot color={e.rag?.color} />{e.rag?.name || e.id}</h3>
+                {e.id === fastestId && <span className="badge badge-good">Fastest</span>}
+                {e.status === 'loading' && <span className="badge">Running</span>}
+                {e.status === 'error' && <span className="badge badge-bad">Failed</span>}
+              </header>
 
-                <div className="compare-metrics">
-                  <div className="compare-metric">
-                    <div className="compare-metric-value">{result.total_time_ms.toFixed(0)}ms</div>
-                    <div className="compare-metric-label">Total</div>
-                  </div>
-                  <div className="compare-metric">
-                    <div className="compare-metric-value">{result.retrieval_time_ms.toFixed(0)}ms</div>
-                    <div className="compare-metric-label">Retrieval</div>
-                  </div>
-                  <div className="compare-metric">
-                    <div className="compare-metric-value">{result.generation_time_ms.toFixed(0)}ms</div>
-                    <div className="compare-metric-label">Generation</div>
-                  </div>
-                  <div className="compare-metric">
-                    <div className="compare-metric-value">{result.chunks_searched}</div>
-                    <div className="compare-metric-label">Chunks</div>
-                  </div>
-                </div>
+              {e.status === 'loading' && <div className="skeleton" aria-hidden="true"><i /><i /><i /></div>}
 
-                {result.workflow_steps && (
-                  <div style={{
-                    marginTop: '12px',
-                    fontSize: '0.7rem',
-                    color: 'var(--text-muted)',
-                    fontFamily: 'var(--font-mono)',
-                  }}>
-                    {result.workflow_steps.length} workflow steps
-                  </div>
-                )}
-              </div>
-            );
-          })}
+              {e.status === 'error' && <p className="form-error" role="alert">{e.error}</p>}
+
+              {e.status === 'done' && (
+                <>
+                  <p className="answer-text">{e.result.answer}</p>
+                  <dl className="stats stats-tight">
+                    <Stat label="Total" value={formatMs(e.result.total_time_ms)} />
+                    <Stat label="Retrieval" value={formatMs(e.result.retrieval_time_ms)} />
+                    <Stat label="Generation" value={formatMs(e.result.generation_time_ms)} />
+                    <Stat label="Chunks" value={e.result.chunks_searched} />
+                  </dl>
+                </>
+              )}
+            </article>
+          ))}
         </div>
       )}
     </div>

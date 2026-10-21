@@ -1,216 +1,168 @@
-import { useState, useMemo } from 'react';
-import { IconBook, IconPlay, IconX, IconChevronDown, IconChevronRight, IconCheckCircle, IconAlertCircle, IconGitBranch, IconSearch, IconExternalLink } from './Icons';
+import { useState, useMemo, useEffect, useRef } from 'react';
+import {
+  IconPlay, IconX, IconCheckCircle, IconAlertCircle, IconGitBranch,
+} from './Icons';
 import { getIconComponent } from './IconMap';
+import { EmptyState, SearchInput, Segmented, EngineDot } from './ui';
+import { matchesQuery } from '../utils/format';
 
-// Map RAG type IDs to their runnable engine labels
-const RUNNABLE_ENGINES = ['traditional', 'hybrid', 'graph', 'agentic'];
-
-// Category display order
-const CATEGORY_ORDER = {
-  runnable: 0,
-  showcase: 1,
-};
-
-// RAG evolution timeline data
-const RAG_TIMELINE = [
-  { year: '2020', label: 'RAG v1', desc: 'Lewis et al. — Original RAG paper (Naive)' },
-  { year: '2022', label: 'HyDE', desc: 'Zero-shot dense retrieval via hypothetical docs' },
-  { year: '2023', label: 'CRAG / Self-RAG / FLARE', desc: 'Self-correcting retrieval patterns emerge' },
-  { year: '2023', label: 'Fusion RAG', desc: 'Multi-query fusion via RRF' },
-  { year: '2024', label: 'GraphRAG', desc: 'Microsoft — Knowledge graph community summaries' },
-  { year: '2024', label: 'LightRAG / Modular RAG', desc: 'Dual-level graph + composable pipeline patterns' },
-  { year: '2024', label: 'Multimodal RAG', desc: 'ColPali — PDF pages as image embeddings' },
-  { year: '2025', label: 'LazyGraphRAG / StructRAG', desc: 'Cost-efficient graph + dynamic structure routing' },
+const TIMELINE = [
+  { year: '2020', label: 'RAG', desc: 'Lewis et al. publish the original retrieval-augmented generation paper.' },
+  { year: '2022', label: 'HyDE', desc: 'Zero-shot dense retrieval using hypothetical documents.' },
+  { year: '2023', label: 'CRAG, Self-RAG, FLARE', desc: 'Self-correcting retrieval patterns emerge.' },
+  { year: '2023', label: 'Fusion RAG', desc: 'Multi-query retrieval merged with reciprocal rank fusion.' },
+  { year: '2024', label: 'GraphRAG', desc: 'Microsoft adds knowledge-graph community summaries.' },
+  { year: '2024', label: 'LightRAG, Modular RAG', desc: 'Dual-level graph retrieval and composable pipelines.' },
+  { year: '2024', label: 'Multimodal RAG', desc: 'ColPali embeds PDF pages as images.' },
+  { year: '2025', label: 'LazyGraphRAG, StructRAG', desc: 'Cheaper graph indexing and dynamic structure routing.' },
 ];
 
-// Comparison table dimensions
-const COMPARISON_DIMS = [
-  { key: 'indexCost', label: 'Index Cost' },
-  { key: 'queryLatency', label: 'Query Latency' },
-  { key: 'multiHop', label: 'Multi-hop' },
-  { key: 'selfCorrect', label: 'Self-Correct' },
-  { key: 'implementation', label: 'Complexity' },
+// tone: good < warn < bad < muted, used for colour and for sorting best-first.
+const DIMENSIONS = [
+  { key: 'indexCost', label: 'Index cost', values: { free: ['Free', 'good'], medium: ['Medium', 'warn'], high: ['High', 'bad'] } },
+  { key: 'latency', label: 'Query latency', values: { fast: ['Fast', 'good'], medium: ['Medium', 'warn'], slow: ['Slow', 'bad'] } },
+  { key: 'multiHop', label: 'Multi-hop', values: { yes: ['Yes', 'good'], limited: ['Limited', 'warn'], no: ['No', 'muted'] } },
+  { key: 'selfCorrect', label: 'Self-correcting', values: { yes: ['Yes', 'good'], partial: ['Partial', 'warn'], no: ['No', 'muted'] } },
+  { key: 'complexity', label: 'Complexity', values: { simple: ['Simple', 'good'], medium: ['Medium', 'warn'], high: ['High', 'bad'] } },
 ];
+const TONE_RANK = { good: 0, warn: 1, bad: 2, muted: 3 };
 
-// Static comparison data per RAG type
-const RAG_COMPARISON = {
-  naive:        { indexCost: '⚡ Free', queryLatency: '🟢 Fast', multiHop: '❌ No', selfCorrect: '❌ No', implementation: '🟢 Simple' },
-  traditional:  { indexCost: '⚡ Free', queryLatency: '🟢 Fast', multiHop: '❌ No', selfCorrect: '❌ No', implementation: '🟢 Simple' },
-  advanced:     { indexCost: '⚡ Free', queryLatency: '🟡 Medium', multiHop: '⚠️ Limited', selfCorrect: '❌ No', implementation: '🟡 Medium' },
-  hybrid:       { indexCost: '⚡ Free', queryLatency: '🟡 Medium', multiHop: '⚠️ Limited', selfCorrect: '❌ No', implementation: '🟡 Medium' },
-  modular:      { indexCost: '⚡ Free', queryLatency: '🟡 Medium', multiHop: '⚠️ Limited', selfCorrect: '❌ No', implementation: '🔴 High' },
-  graph:        { indexCost: '💸 High', queryLatency: '🔴 Slow', multiHop: '✅ Yes', selfCorrect: '❌ No', implementation: '🔴 High' },
-  lazygraphrag: { indexCost: '⚡ Free', queryLatency: '🟡 Medium', multiHop: '✅ Yes', selfCorrect: '❌ No', implementation: '🔴 High' },
-  lightrag:     { indexCost: '🟡 Medium', queryLatency: '🟡 Medium', multiHop: '✅ Yes', selfCorrect: '❌ No', implementation: '🟡 Medium' },
-  agentic:      { indexCost: '⚡ Free', queryLatency: '🔴 Slow', multiHop: '✅ Yes', selfCorrect: '✅ Yes', implementation: '🔴 High' },
-  crag:         { indexCost: '⚡ Free', queryLatency: '🟡 Medium', multiHop: '⚠️ Limited', selfCorrect: '✅ Yes', implementation: '🟡 Medium' },
-  selfrag:      { indexCost: '💸 High', queryLatency: '🟡 Medium', multiHop: '⚠️ Limited', selfCorrect: '✅ Yes', implementation: '🔴 High' },
-  hyde:         { indexCost: '⚡ Free', queryLatency: '🟡 Medium', multiHop: '❌ No', selfCorrect: '❌ No', implementation: '🟢 Simple' },
-  flare:        { indexCost: '⚡ Free', queryLatency: '🔴 Slow', multiHop: '✅ Yes', selfCorrect: '⚠️ Partial', implementation: '🔴 High' },
-  fusion:       { indexCost: '⚡ Free', queryLatency: '🟡 Medium', multiHop: '❌ No', selfCorrect: '❌ No', implementation: '🟡 Medium' },
-  multimodal:   { indexCost: '🟡 Medium', queryLatency: '🟡 Medium', multiHop: '❌ No', selfCorrect: '❌ No', implementation: '🔴 High' },
-  structrag:    { indexCost: '🟡 Medium', queryLatency: '🟡 Medium', multiHop: '✅ Yes', selfCorrect: '❌ No', implementation: '🔴 High' },
+//                 cost      latency   multiHop  selfCorrect complexity
+const COMPARISON = {
+  naive:        ['free',   'fast',   'no',      'no',      'simple'],
+  traditional:  ['free',   'fast',   'no',      'no',      'simple'],
+  advanced:     ['free',   'medium', 'limited', 'no',      'medium'],
+  hybrid:       ['free',   'medium', 'limited', 'no',      'medium'],
+  modular:      ['free',   'medium', 'limited', 'no',      'high'],
+  graph:        ['high',   'slow',   'yes',     'no',      'high'],
+  lazygraphrag: ['free',   'medium', 'yes',     'no',      'high'],
+  lightrag:     ['medium', 'medium', 'yes',     'no',      'medium'],
+  agentic:      ['free',   'slow',   'yes',     'yes',     'high'],
+  crag:         ['free',   'medium', 'limited', 'yes',     'medium'],
+  selfrag:      ['high',   'medium', 'limited', 'yes',     'high'],
+  hyde:         ['free',   'medium', 'no',      'no',      'simple'],
+  flare:        ['free',   'slow',   'yes',     'partial', 'high'],
+  fusion:       ['free',   'medium', 'no',      'no',      'medium'],
+  multimodal:   ['medium', 'medium', 'no',      'no',      'high'],
+  structrag:    ['medium', 'medium', 'yes',     'no',      'high'],
 };
 
-function CategoryBadge({ category }) {
-  const isRunnable = category === 'runnable';
+const FILTERS = [
+  { value: 'all', label: 'All' },
+  { value: 'runnable', label: 'Runnable' },
+  { value: 'showcase', label: 'Reference' },
+];
+
+function CategoryTag({ category }) {
+  return category === 'runnable'
+    ? <span className="badge badge-accent"><IconPlay /> Runnable</span>
+    : <span className="badge">Reference</span>;
+}
+
+function ArchCard({ rag, onOpen }) {
   return (
-    <span className={`arch-badge ${isRunnable ? 'arch-badge-runnable' : 'arch-badge-showcase'}`}>
-      {isRunnable ? <><IconPlay /> Runnable</> : <><IconBook /> Showcase</>}
-    </span>
+    <button type="button" className="arch-card" style={{ '--dot': rag.color }} onClick={onOpen}>
+      <span className="arch-card-icon">{getIconComponent(rag.icon)}</span>
+      <span className="arch-card-body">
+        <span className="arch-card-name">{rag.name}</span>
+        <span className="arch-card-desc">{rag.best_for}</span>
+      </span>
+      <span className="arch-card-foot">
+        <CategoryTag category={rag.category} />
+        <span className="arch-card-origin">{(rag.origin || '').split('—')[0].trim()}</span>
+      </span>
+    </button>
   );
 }
 
-function ArchCard({ rag, isSelected, onClick }) {
-  return (
-    <div
-      className={`arch-card ${isSelected ? 'arch-card-selected' : ''}`}
-      style={{ '--card-color': rag.color }}
-      onClick={onClick}
-      id={`arch-card-${rag.id}`}
-    >
-      <div className="arch-card-top">
-        <span className="arch-card-icon">{getIconComponent(rag.icon)}</span>
-        <CategoryBadge category={rag.category} />
-      </div>
-      <h3 className="arch-card-name">{rag.name}</h3>
-      <p className="arch-card-desc">{rag.best_for}</p>
-      <div className="arch-card-footer">
-        <span className="arch-card-origin">{rag.origin.split('—')[0].trim()}</span>
-        <span className="arch-card-arrow">{isSelected ? '▲' : '▼'}</span>
-      </div>
-    </div>
-  );
-}
+function DetailPanel({ rag, onClose, onTryIt }) {
+  const closeRef = useRef(null);
 
-function PipelineDiagram({ diagram }) {
-  if (!diagram) return null;
-  return (
-    <div className="pipeline-diagram">
-      <div className="pipeline-diagram-label">
-        <IconGitBranch /> Pipeline
-      </div>
-      <pre className="pipeline-diagram-code">{diagram}</pre>
-    </div>
-  );
-}
+  useEffect(() => {
+    const previous = document.activeElement;
+    closeRef.current?.focus();
+    const onKey = (e) => e.key === 'Escape' && onClose();
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      previous?.focus?.();
+    };
+  }, [onClose]);
 
-function ArchDetailPanel({ rag, onClose, onTryIt }) {
-  if (!rag) return null;
+  const engineId = rag.category === 'runnable' ? rag.id : rag.engine_id;
 
   return (
-    <div className="arch-detail-overlay" onClick={onClose}>
-      <div className="arch-detail-panel" onClick={e => e.stopPropagation()}>
-        {/* Header */}
-        <div className="arch-detail-header" style={{ '--panel-color': rag.color }}>
-          <div className="arch-detail-header-left">
-            <span className="arch-detail-icon">{getIconComponent(rag.icon)}</span>
-            <div>
-              <h2 className="arch-detail-name">{rag.name}</h2>
-              <CategoryBadge category={rag.category} />
-            </div>
+    <div className="drawer-scrim" onClick={onClose}>
+      <aside
+        className="drawer"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="arch-detail-title"
+        style={{ '--dot': rag.color }}
+        onClick={e => e.stopPropagation()}
+      >
+        <header className="drawer-head">
+          <span className="arch-card-icon">{getIconComponent(rag.icon)}</span>
+          <div>
+            <h2 id="arch-detail-title">{rag.name}</h2>
+            <CategoryTag category={rag.category} />
           </div>
-          <button className="arch-detail-close" onClick={onClose}>
+          <button ref={closeRef} type="button" className="icon-btn" onClick={onClose} aria-label="Close details">
             <IconX />
           </button>
-        </div>
+        </header>
 
-        {/* Body */}
-        <div className="arch-detail-body">
-          {/* Key insight callout */}
-          {rag.key_insight && (
-            <div className="arch-key-insight">
-              <span className="arch-key-insight-label">💡 Key Insight</span>
-              <p>{rag.key_insight}</p>
-            </div>
+        <div className="drawer-body">
+          {rag.key_insight && <p className="insight">{rag.key_insight}</p>}
+          <p>{rag.description}</p>
+
+          {rag.pipeline_diagram && (
+            <section>
+              <h3><IconGitBranch /> Pipeline</h3>
+              <pre className="pipeline">{rag.pipeline_diagram}</pre>
+            </section>
           )}
 
-          {/* Description */}
-          <p className="arch-detail-desc">{rag.description}</p>
-
-          {/* Pipeline diagram */}
-          <PipelineDiagram diagram={rag.pipeline_diagram} />
-
-          {/* Two-column: strengths + weaknesses */}
-          <div className="arch-sw-grid">
+          <div className="pros-cons">
             {rag.strengths?.length > 0 && (
-              <div className="arch-sw-col">
-                <div className="arch-sw-header strengths-header">
-                  <IconCheckCircle /> Strengths
-                </div>
-                <ul className="arch-sw-list">
-                  {rag.strengths.map((s, i) => (
-                    <li key={i} className="arch-sw-item arch-strength">{s}</li>
-                  ))}
-                </ul>
-              </div>
+              <section>
+                <h3 className="good"><IconCheckCircle /> Strengths</h3>
+                <ul>{rag.strengths.map((s, i) => <li key={i}>{s}</li>)}</ul>
+              </section>
             )}
             {rag.weaknesses?.length > 0 && (
-              <div className="arch-sw-col">
-                <div className="arch-sw-header weaknesses-header">
-                  <IconAlertCircle /> Weaknesses
-                </div>
-                <ul className="arch-sw-list">
-                  {rag.weaknesses.map((w, i) => (
-                    <li key={i} className="arch-sw-item arch-weakness">{w}</li>
-                  ))}
-                </ul>
-              </div>
+              <section>
+                <h3 className="bad"><IconAlertCircle /> Weaknesses</h3>
+                <ul>{rag.weaknesses.map((w, i) => <li key={i}>{w}</li>)}</ul>
+              </section>
             )}
           </div>
 
-          {/* Metadata */}
-          <div className="arch-meta-grid">
-            {rag.origin && (
-              <div className="arch-meta-item">
-                <span className="arch-meta-label">Origin</span>
-                <span className="arch-meta-value">{rag.origin}</span>
-              </div>
-            )}
-            {rag.used_by && (
-              <div className="arch-meta-item">
-                <span className="arch-meta-label">Used By</span>
-                <span className="arch-meta-value">{rag.used_by}</span>
-              </div>
-            )}
-            <div className="arch-meta-item">
-              <span className="arch-meta-label">Best For</span>
-              <span className="arch-meta-value">{rag.best_for}</span>
-            </div>
-          </div>
+          <dl className="facts">
+            {rag.origin && <div><dt>Origin</dt><dd>{rag.origin}</dd></div>}
+            {rag.used_by && <div><dt>Used by</dt><dd>{rag.used_by}</dd></div>}
+            <div><dt>Best for</dt><dd>{rag.best_for}</dd></div>
+          </dl>
 
-          {/* Workflow steps */}
           {rag.workflow_steps?.length > 0 && (
-            <div className="arch-workflow">
-              <div className="arch-workflow-label">Workflow Steps</div>
-              <div className="arch-workflow-steps">
-                {rag.workflow_steps.map((step, i) => (
-                  <div key={i} className="arch-workflow-step">
-                    <span className="arch-workflow-num">{i + 1}</span>
-                    <span>{step}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <section>
+              <h3>Workflow</h3>
+              <ol className="plain-steps">
+                {rag.workflow_steps.map((step, i) => <li key={i}>{step}</li>)}
+              </ol>
+            </section>
           )}
-
-          {/* CTA */}
-          <div className="arch-detail-cta">
-            {(rag.category === 'runnable' || rag.engine_id) && (
-              <button
-                className="btn-try-it"
-                onClick={() => onTryIt(rag.engine_id || rag.id)}
-                style={{ '--btn-color': rag.color }}
-              >
-                <IconPlay />
-                {rag.category === 'runnable'
-                  ? `Query with ${rag.name}`
-                  : `Try with ${rag.name.split(' ')[0]} engine`}
-              </button>
-            )}
-          </div>
         </div>
-      </div>
+
+        {engineId && (
+          <footer className="drawer-foot">
+            <button type="button" className="btn btn-primary" onClick={() => onTryIt(engineId)}>
+              <IconPlay />
+              {rag.category === 'runnable' ? `Query with ${rag.name}` : `Try the ${engineId} engine`}
+            </button>
+          </footer>
+        )}
+      </aside>
     </div>
   );
 }
@@ -218,239 +170,138 @@ function ArchDetailPanel({ rag, onClose, onTryIt }) {
 function ComparisonTable({ ragTypes }) {
   const [sortKey, setSortKey] = useState(null);
 
-  const visibleTypes = useMemo(() =>
-    ragTypes.filter(r => RAG_COMPARISON[r.id]),
-    [ragTypes]
-  );
+  const rows = useMemo(() => {
+    const list = ragTypes.filter(r => COMPARISON[r.id]);
+    const idx = DIMENSIONS.findIndex(d => d.key === sortKey);
+    if (idx < 0) return list;
+    const rank = (r) => TONE_RANK[DIMENSIONS[idx].values[COMPARISON[r.id][idx]][1]];
+    return [...list].sort((a, b) => rank(a) - rank(b));
+  }, [ragTypes, sortKey]);
 
   return (
-    <div className="glass-card" id="comparison-table-card">
-      <div className="section-header">
-        <IconGitBranch />
-        <h2>ARCHITECTURE COMPARISON</h2>
-        <div className="line" />
-      </div>
-      <p style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', marginBottom: '16px' }}>
-        Side-by-side comparison of all architectures across key operational dimensions.
-      </p>
-      <div className="comparison-table-wrapper">
-        <table className="comparison-table">
+    <section className="panel" aria-labelledby="compare-table-title">
+      <h2 className="panel-title" id="compare-table-title">Side by side</h2>
+      <p className="muted small">Select a column heading to sort best-first.</p>
+      <div className="table-scroll">
+        <table className="matrix">
           <thead>
             <tr>
-              <th className="comparison-th comparison-th-name">Architecture</th>
-              {COMPARISON_DIMS.map(d => (
+              <th scope="col">Architecture</th>
+              {DIMENSIONS.map(d => (
                 <th
                   key={d.key}
-                  className={`comparison-th ${sortKey === d.key ? 'active' : ''}`}
-                  onClick={() => setSortKey(sortKey === d.key ? null : d.key)}
+                  scope="col"
+                  aria-sort={sortKey === d.key ? 'ascending' : 'none'}
                 >
-                  {d.label}
+                  <button type="button" onClick={() => setSortKey(sortKey === d.key ? null : d.key)}>
+                    {d.label}
+                  </button>
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {visibleTypes.map((rag) => {
-              const cmp = RAG_COMPARISON[rag.id] || {};
-              return (
-                <tr key={rag.id} className={`comparison-row ${rag.category === 'runnable' ? 'runnable-row' : ''}`}>
-                  <td className="comparison-td-name">
-                    <span className="comparison-icon">{getIconComponent(rag.icon)}</span>
-                    <span className="comparison-name">{rag.name}</span>
-                    {rag.category === 'runnable' && (
-                      <span className="comparison-runnable-dot" title="Runnable engine" />
-                    )}
-                  </td>
-                  {COMPARISON_DIMS.map(d => (
-                    <td key={d.key} className="comparison-td">{cmp[d.key] || '—'}</td>
-                  ))}
-                </tr>
-              );
-            })}
+            {rows.map(rag => (
+              <tr key={rag.id}>
+                <th scope="row">
+                  <EngineDot color={rag.color} />
+                  {rag.name}
+                  {rag.category === 'runnable' && <span className="badge badge-accent">Runnable</span>}
+                </th>
+                {DIMENSIONS.map((d, i) => {
+                  const [label, tone] = d.values[COMPARISON[rag.id][i]];
+                  return (
+                    <td key={d.key}><span className={`tone tone-${tone}`}>{label}</span></td>
+                  );
+                })}
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
-      <div style={{ marginTop: '12px', fontSize: '0.7rem', color: 'var(--text-muted)', display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-        <span>🟢 Runnable engine available</span>
-        <span>💸 High = $5–50/MB corpus</span>
-        <span>✅ = supported &nbsp; ⚠️ = partial &nbsp; ❌ = not supported</span>
-      </div>
-    </div>
+      <p className="muted small">High index cost is roughly $5 to $50 per MB of corpus.</p>
+    </section>
   );
 }
 
-function RAGTimeline() {
+function Timeline() {
   return (
-    <div className="glass-card" id="rag-timeline-card">
-      <div className="section-header">
-        <IconBook />
-        <h2>RAG EVOLUTION TIMELINE</h2>
-        <div className="line" />
-      </div>
-      <p style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', marginBottom: '20px' }}>
-        From the original 2020 paper to the cutting-edge architectures of 2025–2026.
-      </p>
-      <div className="timeline-container">
-        {RAG_TIMELINE.map((item, i) => (
-          <div key={i} className="timeline-item">
-            <div className="timeline-dot" />
-            {i < RAG_TIMELINE.length - 1 && <div className="timeline-line" />}
-            <div className="timeline-content">
-              <span className="timeline-year">{item.year}</span>
-              <span className="timeline-label">{item.label}</span>
-              <span className="timeline-desc">{item.desc}</span>
+    <section className="panel" aria-labelledby="timeline-title">
+      <h2 className="panel-title" id="timeline-title">How RAG evolved</h2>
+      <ol className="timeline">
+        {TIMELINE.map((item, i) => (
+          <li key={i}>
+            <span className="timeline-year mono">{item.year}</span>
+            <div>
+              <strong>{item.label}</strong>
+              <p>{item.desc}</p>
             </div>
-          </div>
+          </li>
         ))}
-      </div>
-    </div>
+      </ol>
+    </section>
   );
 }
 
 export default function ArchitectureShowcase({ ragTypes, onTryIt }) {
-  const [selectedRag, setSelectedRag] = useState(null);
+  const [openId, setOpenId] = useState(null);
   const [search, setSearch] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [category, setCategory] = useState('all');
 
-  const filtered = useMemo(() => {
-    return ragTypes
-      .filter(r => {
-        const matchesSearch =
-          !search ||
-          r.name.toLowerCase().includes(search.toLowerCase()) ||
-          r.best_for.toLowerCase().includes(search.toLowerCase());
-        const matchesCat = categoryFilter === 'all' || r.category === categoryFilter;
-        return matchesSearch && matchesCat;
-      })
-      .sort((a, b) => (CATEGORY_ORDER[a.category] ?? 99) - (CATEGORY_ORDER[b.category] ?? 99));
-  }, [ragTypes, search, categoryFilter]);
-
+  const filtered = useMemo(
+    () => ragTypes.filter(r => matchesQuery(r, search) && (category === 'all' || r.category === category)),
+    [ragTypes, search, category],
+  );
   const runnable = filtered.filter(r => r.category === 'runnable');
-  const showcase = filtered.filter(r => r.category === 'showcase');
-
-  const handleTryIt = (engineId) => {
-    onTryIt(engineId);
-    setSelectedRag(null);
-  };
+  const reference = filtered.filter(r => r.category !== 'runnable');
+  const runnableTotal = ragTypes.filter(r => r.category === 'runnable').length;
+  const open = ragTypes.find(r => r.id === openId);
 
   return (
-    <div className="arch-showcase" id="arch-showcase">
-      {/* Hero Banner */}
-      <div className="arch-hero glass-card">
-        <div className="arch-hero-content">
-          <h2 className="arch-hero-title">
-            RAG Architecture Library
-          </h2>
-          <p className="arch-hero-subtitle">
-            14 industry architectures — from the 2020 original to 2025 cutting-edge.
-            Explore, compare, and run the ones that fit your use case.
-          </p>
-          <div className="arch-hero-stats">
-            <div className="arch-stat">
-              <span className="arch-stat-num">14</span>
-              <span className="arch-stat-label">Architectures</span>
-            </div>
-            <div className="arch-stat">
-              <span className="arch-stat-num">4</span>
-              <span className="arch-stat-label">Runnable Engines</span>
-            </div>
-            <div className="arch-stat">
-              <span className="arch-stat-num">2020–2026</span>
-              <span className="arch-stat-label">Timeline</span>
-            </div>
-          </div>
-        </div>
+    <div className="library">
+      <header className="page-head">
+        <h1>Architecture library</h1>
+        <p>
+          {ragTypes.length} retrieval architectures from 2020 to today.
+          {' '}{runnableTotal} can run on your documents; the rest are reference write-ups.
+        </p>
+      </header>
+
+      <div className="toolbar">
+        <SearchInput value={search} onChange={setSearch} placeholder="Search architectures" />
+        <Segmented options={FILTERS} value={category} onChange={setCategory} label="Filter by type" />
       </div>
 
-      {/* Search + Filter */}
-      <div className="arch-filters glass-card">
-        <div className="arch-search-wrapper">
-          <IconSearch />
-          <input
-            className="arch-search-input"
-            type="text"
-            placeholder="Search architectures..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            id="arch-search"
-          />
-        </div>
-        <div className="arch-filter-tabs">
-          {['all', 'runnable', 'showcase'].map(cat => (
-            <button
-              key={cat}
-              className={`arch-filter-tab ${categoryFilter === cat ? 'active' : ''}`}
-              onClick={() => setCategoryFilter(cat)}
-              id={`arch-filter-${cat}`}
-            >
-              {cat === 'all' ? `All (${ragTypes.length})` :
-               cat === 'runnable' ? `⚡ Runnable (${ragTypes.filter(r => r.category === 'runnable').length})` :
-               `📖 Showcase (${ragTypes.filter(r => r.category === 'showcase').length})`}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Runnable Engines */}
       {runnable.length > 0 && (
-        <div>
-          <div className="arch-section-header">
-            <span className="arch-section-badge runnable">⚡ Runnable Engines</span>
-            <span className="arch-section-sub">Query your documents with these live architectures</span>
+        <section aria-label="Runnable engines">
+          <h2 className="group-title">Runnable <span className="count">{runnable.length}</span></h2>
+          <div className="arch-grid">
+            {runnable.map(r => <ArchCard key={r.id} rag={r} onOpen={() => setOpenId(r.id)} />)}
           </div>
-          <div className="arch-grid arch-grid-runnable">
-            {runnable.map(rag => (
-              <ArchCard
-                key={rag.id}
-                rag={rag}
-                isSelected={selectedRag?.id === rag.id}
-                onClick={() => setSelectedRag(selectedRag?.id === rag.id ? null : rag)}
-              />
-            ))}
-          </div>
-        </div>
+        </section>
       )}
 
-      {/* Showcase Architectures */}
-      {showcase.length > 0 && (
-        <div>
-          <div className="arch-section-header">
-            <span className="arch-section-badge showcase">📖 Architecture Showcase</span>
-            <span className="arch-section-sub">Educational deep-dives into industry-standard patterns</span>
-          </div>
+      {reference.length > 0 && (
+        <section aria-label="Reference architectures">
+          <h2 className="group-title">Reference <span className="count">{reference.length}</span></h2>
           <div className="arch-grid">
-            {showcase.map(rag => (
-              <ArchCard
-                key={rag.id}
-                rag={rag}
-                isSelected={selectedRag?.id === rag.id}
-                onClick={() => setSelectedRag(selectedRag?.id === rag.id ? null : rag)}
-              />
-            ))}
+            {reference.map(r => <ArchCard key={r.id} rag={r} onOpen={() => setOpenId(r.id)} />)}
           </div>
-        </div>
+        </section>
       )}
 
       {filtered.length === 0 && (
-        <div className="empty-state">
-          <span className="empty-state-icon">🔍</span>
-          <h3>No architectures found</h3>
-          <p>Try adjusting your search or filter.</p>
-        </div>
+        <EmptyState title="No architectures match">Try a different search or filter.</EmptyState>
       )}
 
-      {/* Comparison Table */}
       <ComparisonTable ragTypes={ragTypes} />
+      <Timeline />
 
-      {/* RAG Timeline */}
-      <RAGTimeline />
-
-      {/* Detail Panel Modal */}
-      {selectedRag && (
-        <ArchDetailPanel
-          rag={selectedRag}
-          onClose={() => setSelectedRag(null)}
-          onTryIt={handleTryIt}
+      {open && (
+        <DetailPanel
+          rag={open}
+          onClose={() => setOpenId(null)}
+          onTryIt={(id) => { setOpenId(null); onTryIt(id); }}
         />
       )}
     </div>
