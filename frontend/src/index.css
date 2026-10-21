@@ -559,7 +559,7 @@ code, pre, .mono { font-family: var(--font-mono); }
 
 .drawer-scrim { position: fixed; inset: 0; z-index: 50; background: var(--overlay); display: flex; justify-content: flex-end; animation: fade 0.15s ease-out; }
 .drawer {
-  display: flex; flex-direction: column; width: min(100%, 520px); height: 100%;
+  display: flex; flex-direction: column; width: min(100%, 680px); height: 100%;
   background: var(--surface); border-left: 1px solid var(--border);
   animation: drawer-in 0.2s ease-out;
 }
@@ -583,6 +583,76 @@ code, pre, .mono { font-family: var(--font-mono); }
 .plain-steps { list-style: decimal; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; color: var(--text-2); }
 .drawer-foot { padding: 16px 20px; border-top: 1px solid var(--border); }
 .drawer-foot .btn { width: 100%; }
+
+/* ── Pipeline flow ─────────────────────────────────────────────── */
+
+.flow { display: flex; flex-direction: column; gap: 22px; }
+.flow-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--text-3); }
+.flow-legend li { display: inline-flex; align-items: center; gap: 6px; }
+.flow-legend svg { width: 13px; height: 13px; }
+.flow-lane-title { margin: 0 0 10px; }
+.drawer-body .flow-lane-title { font-size: 13px; color: var(--text); font-weight: 600; }
+
+.flow-steps { display: flex; flex-direction: column; align-items: flex-start; width: 100%; }
+.flow-steps > li { position: relative; width: 100%; }
+.flow-steps > li + li { margin-top: 22px; }
+/* Connector: a short rail with an arrowhead pointing at the next step. */
+.flow-steps > li + li::before {
+  content: ''; position: absolute; left: 16px; top: -22px; height: 22px; width: 1px;
+  background: var(--border-strong);
+}
+.flow-steps > li + li::after {
+  content: ''; position: absolute; left: 12.5px; top: -7px; width: 7px; height: 7px;
+  border-right: 1px solid var(--border-strong); border-bottom: 1px solid var(--border-strong);
+  transform: rotate(45deg);
+}
+
+.flow-node {
+  display: flex; align-items: center; gap: 10px; width: fit-content; max-width: 100%;
+  padding: 6px 14px 6px 6px;
+  background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius-md);
+}
+.flow-node-icon {
+  display: grid; place-items: center; flex: none; width: 24px; height: 24px;
+  border-radius: var(--radius-sm); background: var(--surface-2); color: var(--text-3);
+}
+.flow-node-icon svg { width: 14px; height: 14px; }
+.flow-node-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.35; }
+.flow-node-text strong { font-weight: 500; color: var(--text); }
+.flow-node-text span { font-size: 12.5px; color: var(--text-3); }
+
+.kind-llm .flow-node-icon, .flow-legend .kind-llm { color: var(--accent); }
+.kind-llm.flow-node { border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+.kind-llm .flow-node-icon { background: var(--accent-soft); }
+.kind-decision.flow-node { border-style: dashed; }
+.kind-decision .flow-node-icon, .flow-legend .kind-decision { color: var(--warn); }
+.kind-decision .flow-node-icon { background: var(--warn-soft); }
+.kind-output.flow-node { border-color: color-mix(in srgb, var(--good) 45%, transparent); }
+.kind-output .flow-node-icon, .flow-legend .kind-output { color: var(--good); }
+.kind-output .flow-node-icon { background: var(--good-soft); }
+.kind-loop.flow-node { border-style: dotted; background: transparent; }
+.kind-loop .flow-node-text strong { color: var(--text-2); }
+
+.flow-branch-label { display: block; margin-bottom: 8px; font-size: 12px; color: var(--text-3); }
+.flow-branch-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; }
+.flow-path {
+  padding: 10px 12px 12px; min-width: 0;
+  background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-md);
+}
+.flow-path-when { display: block; margin-bottom: 10px; font-size: 12.5px; font-weight: 500; color: var(--text-2); }
+.flow-path .flow-steps > li + li { margin-top: 18px; }
+.flow-path .flow-steps > li + li::before { top: -18px; height: 18px; }
+.flow-path .flow-steps > li + li::after { top: -5px; }
+
+.flow-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+.flow-grid .flow-node { width: 100%; }
+.flow-note { margin-top: 12px; color: var(--text-3); font-size: 13px; }
+.flow-loop {
+  display: inline-flex; align-items: center; gap: 8px; margin-top: 14px;
+  padding: 4px 10px; border: 1px dotted var(--border-strong); border-radius: 999px;
+  color: var(--text-2); font-size: 12.5px;
+}
+.flow-loop svg { width: 13px; height: 13px; }
 
 /* ── Loading ───────────────────────────────────────────────────── */
 

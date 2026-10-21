@@ -5,6 +5,8 @@ import {
 import { getIconComponent } from './IconMap';
 import { EmptyState, SearchInput, Segmented, EngineDot } from './ui';
 import { matchesQuery } from '../utils/format';
+import PipelineFlow from './PipelineFlow';
+import { PIPELINES } from '../data/pipelines';
 
 const TIMELINE = [
   { year: '2020', label: 'RAG', desc: 'Lewis et al. publish the original retrieval-augmented generation paper.' },
@@ -116,10 +118,10 @@ function DetailPanel({ rag, onClose, onTryIt }) {
           {rag.key_insight && <p className="insight">{rag.key_insight}</p>}
           <p>{rag.description}</p>
 
-          {rag.pipeline_diagram && (
+          {(PIPELINES[rag.id] || rag.pipeline_diagram) && (
             <section>
-              <h3><IconGitBranch /> Pipeline</h3>
-              <pre className="pipeline">{rag.pipeline_diagram}</pre>
+              <h3><IconGitBranch /> How it works</h3>
+              <PipelineFlow spec={PIPELINES[rag.id]} fallback={rag.pipeline_diagram} />
             </section>
           )}
 
